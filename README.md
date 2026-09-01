@@ -17,44 +17,39 @@ Este repositório contém a infraestrutura como código (IaC) e o código de tra
 
 ## 🗂️ Estrutura do Projeto
 
-Abaixo está o mapeamento detalhado da arquitetura de pastas do repositório:
-
 ```text
 etl-iti-icp-brasil/
+├── .github/                             # Automações e CI/CD (GitHub Actions)
+│   └── workflows/
+├── .vscode/                             # Configurações do VS Code e stubs de tipagem Spark
+│   ├── settings.json
+│   └── __builtins__.pyi
 │
-├── ITI_ICP_BRASIL/                      # Projeto Databricks Asset Bundle (DAB)
-│   ├── .vscode/                         # Configurações do VS Code e stubs Databricks
-│   │   ├── extensions.json              # Extensões recomendadas (Databricks, Python, Ruff)
-│   │   ├── settings.json                # Configurações do workspace
-│   │   └── __builtins__.pyi             # Declarações de tipos / builtins para DLT e Spark
+├── databricks.yml                       # Configuração principal do Databricks Asset Bundle
+├── pyproject.toml                       # Gerenciamento de dependências Python (uv / hatchling)
+├── uv.lock                              # Lockfile de dependências com versões exatas
+│
+├── resources/                           # Declaração de recursos e orquestrações Databricks
+│   └── ITI_ICP_BRASIL_etl.pipeline.yml  # Definição da pipeline Delta Live Tables (DLT)
+│
+├── src/                                 # Código-fonte Python e pipelines
+│   ├── ITI_ICP_BRASIL/                  # Biblioteca Python compartilhada
+│   │   ├── __init__.py
+│   │   ├── main.py                      # Entry point de execução do pacote
+│   │   ├── config/                      # Configurações de conexões e parâmetros
+│   │   └── output/                      # Utilitários de saída e escrita
 │   │
-│   ├── databricks.yml                   # Configuração principal do Databricks Bundle
-│   ├── pyproject.toml                   # Gerenciamento de dependências Python (uv / hatchling)
-│   ├── AGENTS.md / CLAUDE.md            # Instruções e diretrizes para agentes de IA
-│   │
-│   ├── resources/                       # Declaração de recursos e orquestrações Databricks
-│   │   ├── ITI_ICP_BRASIL_etl.pipeline.yml # Definição da pipeline Delta Live Tables (DLT)
-│   │   └── sample_job.job.yml           # Definição dos Jobs/Workflows agendados
-│   │
-│   ├── src/                             # Código-fonte Python e pipelines
-│   │   ├── ITI_ICP_BRASIL/              # Biblioteca/pacote Python compartilhado
-│   │   │   ├── __init__.py
-│   │   │   ├── main.py                  # Entrypoint de execução
-│   │   │   └── taxis.py                 # Módulos utilitários / transformações base
-│   │   │
-│   │   ├── ITI_ICP_BRASIL_etl/          # Código específico das pipelines DLT
-│   │   │   ├── transformations/         # Scripts de transformações (Bronze -> Silver -> Gold)
-│   │   │   │   ├── sample_trips_ITI_ICP_BRASIL.py
-│   │   │   │   └── sample_zones_ITI_ICP_BRASIL.py
-│   │   │   └── explorations/            # Notebooks de análise exploratória de dados
-│   │   │
-│   │   └── sample_notebook.ipynb        # Notebooks de apoio/teste
-│   │
-│   ├── tests/                           # Testes automatizados (Unit & Integration tests)
-│   │   ├── conftest.py                  # Fixtures e inicialização de sessão Spark/Connect
-│   │   └── sample_taxis_test.py         # Casos de teste automatizados
-│   │
-│   └── fixtures/                        # Mock data e fixtures para validação de testes
+│   └── ITI_ICP_BRASIL_etl/              # Pipeline declarativa DLT
+│       ├── README.md
+│       └── transformations/             # Scripts de transformações (Bronze -> Silver -> Gold)
+│           └── .gitkeep
+│
+├── tests/                               # Testes automatizados (Unit & Integration tests)
+│   ├── conftest.py                      # Fixtures e inicialização de sessão Spark/Connect
+│   └── test_package.py                  # Teste unitário base do pacote
+│
+├── fixtures/                            # Mock data e fixtures para testes
+│   └── .gitkeep
 │
 ├── .gitignore                           # Regras de exclusão do Git
 └── README.md                            # Documentação principal do projeto
@@ -82,29 +77,24 @@ etl-iti-icp-brasil/
 
 ### 2. Configurar o Ambiente Local
 
-Navegue até o diretório do bundle e sincronize as dependências virtuais com `uv`:
+Sincronize as dependências virtuais com `uv` diretamente na raiz do projeto:
 
 ```bash
-# Entrar no diretório do projeto
-cd ITI_ICP_BRASIL
-
 # Criar ambiente virtual e instalar dependências de desenvolvimento
 uv sync --dev
 ```
 
 ### 3. Autenticação no Databricks
 
-Configure as credenciais de acesso ao workspace Databricks:
-
 ```bash
-databricks configure
+databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
 ```
 
 ---
 
 ## ⚙️ Ciclo de Desenvolvimento & Deploy
 
-O projeto conta com alvos de deploy parametrizados (`dev` e `prod`) em [databricks.yml](file:///c:/Users/gbarb/Documents/PITON/icp_brasil/ITI_ICP_BRASIL/databricks.yml):
+O projeto conta com alvos de deploy parametrizados (`dev` e `prod`) em [databricks.yml](file:///c:/Users/gbarb/Documents/PITON/icp_brasil/databricks.yml):
 
 | Alvo (`target`) | Modo | Catálogo / Schema | Descrição |
 | :--- | :--- | :--- | :--- |
@@ -123,18 +113,15 @@ databricks bundle deploy
 # Deploy em ambiente de produção
 databricks bundle deploy --target prod
 
-# Executar pipeline/job no Databricks
+# Executar pipeline no Databricks
 databricks bundle run
-
-# Executar uma pipeline específica
-databricks bundle run ITI_ICP_BRASIL_etl_pipeline
 ```
 
 ---
 
 ## 🧪 Testes e Qualidade de Código
 
-Execute a suíte de testes unitários e o linter localmente:
+Execute a suíte de testes unitários e o linter diretamente na raiz:
 
 ```bash
 # Executar testes unitários com pytest
@@ -146,11 +133,3 @@ uv run ruff check .
 # Formatar código automaticamente
 uv run ruff format .
 ```
-
----
-
-## 📋 Boas Práticas Adotadas
-
-1. **Separação de Camadas:** Módulos utilitários e lógicas de negócios isoladas em `src/ITI_ICP_BRASIL/`, permitindo empacotamento em wheel (`.whl`) reutilizável.
-2. **Pipelines Declarativas (DLT):** Transformações organizadas por camadas de qualidade de dados com suporte a testes de qualidade com expectations.
-3. **Isolamento de Ambientes:** Garantia de que execuções locais e de desenvolvimento não interfiram nos dados de produção via substituição dinâmica de variáveis (`catalog` e `schema`).
