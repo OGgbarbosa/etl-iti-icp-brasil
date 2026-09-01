@@ -1,27 +1,26 @@
 """This file configures pytest, initializes Databricks Connect, and provides fixtures for Spark and loading test data."""
 
+from __future__ import annotations
+
 import csv
 import json
 import os
 import pathlib
 import sys
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
-try:
-    import pytest
-    from databricks.connect import DatabricksSession
-    from databricks.sdk import WorkspaceClient
+import pytest
+
+if TYPE_CHECKING:
     from pyspark.sql import SparkSession
-except ImportError:
-    raise ImportError(
-        "Test dependencies not found.\n\n"
-        "Run tests using 'uv run pytest'. See https://docs.astral.sh/uv to learn more about uv."
-    )
 
 
-def _enable_fallback_compute():
+def _enable_fallback_compute() -> None:
     """Enable serverless compute if no compute is specified."""
     try:
+        from databricks.sdk import WorkspaceClient
+
         conf = WorkspaceClient().config
         if conf.serverless_compute_id or conf.cluster_id or os.environ.get("SPARK_REMOTE"):
             return
@@ -58,6 +57,8 @@ def spark() -> SparkSession:
     _enable_fallback_compute()
 
     try:
+        from databricks.connect import DatabricksSession
+
         if hasattr(DatabricksSession.builder, "validateSession"):
             return DatabricksSession.builder.validateSession().getOrCreate()
         return DatabricksSession.builder.getOrCreate()
