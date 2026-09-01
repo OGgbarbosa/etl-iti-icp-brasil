@@ -29,6 +29,7 @@ targets:
     default: true
     workspace:
       host: https://dbc-15e61da2-fb6a.cloud.databricks.com
+      profile: dbc-15e61da2-fb6a
     variables:
       catalog: workspace
       schema: ${workspace.current_user.short_name}
@@ -36,6 +37,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-15e61da2-fb6a.cloud.databricks.com
+      profile: dbc-15e61da2-fb6a
       # We explicitly deploy to /Workspace/Users/gbarbos4@gmail.com to make sure we only have a single copy.
       root_path: /Workspace/Users/gbarbos4@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:

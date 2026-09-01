@@ -1,8 +1,8 @@
-from databricks.sdk.runtime import spark
-from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession
+
 from ITI_ICP_BRASIL import taxis
 
 
-def test_find_all_taxis():
-    results = taxis.find_all_taxis()
+def test_find_all_taxis(spark: SparkSession) -> None:
+    results = taxis.find_all_taxis(spark=spark)
     assert results.count() > 5
