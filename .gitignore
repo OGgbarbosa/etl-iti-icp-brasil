@@ -36,6 +36,7 @@ ENV/
 .idea/
 *.swp
 *.swo
+*.claude/
 
 # Databricks
 .databricks/
