@@ -1,4 +1,4 @@
-# Environment variables
+﻿# Environment variables
 .env
 *.env
 
@@ -27,7 +27,6 @@ wheels/
 # Virtual environments
 .venv/
 env/
-.env
 venv/
 ENV/
 
@@ -40,9 +39,13 @@ ENV/
 
 # Databricks
 .databricks/
+databricks.yml.backup
+*.backup
+*.local.yml
 
 # Testing & Linters
 .pytest_cache/
 .ruff_cache/
 .coverage
 htmlcov/
+
