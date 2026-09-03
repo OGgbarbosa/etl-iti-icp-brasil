@@ -1,90 +1,122 @@
-# 🏛️ ETL ITI - ICP-Brasil (Databricks Asset Bundles)
+﻿# ðŸ›ï¸ ETL ITI - ICP-Brasil (Databricks Lakehouse & Asset Bundles)
 
-> ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (Work in Progress)**  
-> Novas funcionalidades, ingestões e pipelines de dados do ITI / ICP-Brasil estão sendo implementadas ativamente.
-
----
-
-Pipeline de Engenharia de Dados e ETL para processamento e ingestão de dados públicos do **ITI (Instituto Nacional de Tecnologia da Informação) / ICP-Brasil**, estruturado utilizando **Databricks Asset Bundles (DABs)**, **Delta Live Tables (DLT)** e **PySpark**.
+> âš ï¸ **Status do Projeto:** ðŸš§ **Em Desenvolvimento (Work in Progress)**  
+> Pipeline de ingestÃ£o, desaninhamento e carga dos dados pÃºblicos de entidades e certificados digitais do ITI / ICP-Brasil no Databricks Unity Catalog.
 
 ---
 
-## 📌 Visão Geral
-
-Este repositório contém a infraestrutura como código (IaC) e o código de transformação de dados para ingestão, processamento e modelagem dos dados de certificados e entidades do ecossistema ICP-Brasil no **Databricks Lakehouse**, garantindo governança via **Unity Catalog**, versionamento rigoroso e ciclo de vida de desenvolvimento automatizado (CI/CD).
+Pipeline de Engenharia de Dados e ETL para processamento e ingestÃ£o dos dados pÃºblicos da estrutura do **ITI (Instituto Nacional de Tecnologia da InformaÃ§Ã£o) / ICP-Brasil**, estruturado utilizando **Databricks Asset Bundles (DABs)**, **Delta Live Tables (DLT)**, **Unity Catalog Volumes** e **PySpark**.
 
 ---
 
-## 🗂️ Estrutura do Projeto
+## ðŸ“Œ VisÃ£o Geral da Arquitetura
+
+O projeto realiza a extraÃ§Ã£o dos dados abertos da infraestrutura de chaves pÃºblicas brasileira (ACs, ARs, ACTs, PSS e certificados), tratando estruturas JSON hierÃ¡rquicas e realizando a ingestÃ£o automatizada na arquitetura MedalhÃ£o do **Databricks Lakehouse**:
 
 ```text
-etl-iti-icp-brasil/
-├── .github/                             # Automações e CI/CD (GitHub Actions)
-│   └── workflows/
-├── .vscode/                             # Configurações do VS Code e stubs de tipagem Spark
-│   ├── settings.json
-│   └── __builtins__.pyi
-│
-├── databricks.yml                       # Configuração principal do Databricks Asset Bundle
-├── pyproject.toml                       # Gerenciamento de dependências Python (uv / hatchling)
-├── uv.lock                              # Lockfile de dependências com versões exatas
-│
-├── resources/                           # Declaração de recursos e orquestrações Databricks
-│   └── ITI_ICP_BRASIL_etl.pipeline.yml  # Definição da pipeline Delta Live Tables (DLT)
-│
-├── src/                                 # Código-fonte Python e pipelines
-│   ├── ITI_ICP_BRASIL/                  # Biblioteca Python compartilhada
-│   │   ├── __init__.py
-│   │   ├── main.py                      # Entry point de execução do pacote
-│   │   ├── config/                      # Configurações de conexões e parâmetros
-│   │   └── output/                      # Utilitários de saída e escrita
-│   │
-│   └── ITI_ICP_BRASIL_etl/              # Pipeline declarativa DLT
-│       ├── README.md
-│       └── transformations/             # Scripts de transformações (Bronze -> Silver -> Gold)
-│           └── .gitkeep
-│
-├── tests/                               # Testes automatizados (Unit & Integration tests)
-│   ├── conftest.py                      # Fixtures e inicialização de sessão Spark/Connect
-│   └── test_package.py                  # Teste unitário base do pacote
-│
-├── fixtures/                            # Mock data e fixtures para testes
-│   └── .gitkeep
-│
-├── .gitignore                           # Regras de exclusão do Git
-└── README.md                            # Documentação principal do projeto
+[ API Oficial ITI ] 
+       â”‚
+       â–¼ (requests + flatten)
+[ 0_raw / Volumes ] â”€â”€â–º Armazenamento de arquivos brutos (JSON / CSV)
+       â”‚
+       â–¼ (Delta Live Tables / Spark)
+[ 1_bronze ] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º Tabelas Delta brutas com metadados de ingestÃ£o
+       â”‚
+       â–¼ (TransformaÃ§Ãµes & ValidaÃ§Ãµes de Qualidade)
+[ 2_silver ] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º Entidades tratadas, deduplicadas e padronizadas
+       â”‚
+       â–¼ (Modelagem Dimensional / AgregaÃ§Ãµes)
+[ 3_gold ] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º VisÃµes analÃ­ticas, mÃ©tricas de conformidade e relatÃ³rios
 ```
 
 ---
 
-## 🛠️ Stack Tecnológica
+## ðŸ—‚ï¸ Estrutura do Projeto
 
-- **Orquestração & Plataforma:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
-- **Engine de Processamento:** Apache Spark / PySpark & [Delta Live Tables (DLT)](https://docs.databricks.com/delta-live-tables/index.html)
-- **Governança de Dados:** Databricks Unity Catalog (`catalog` e `schema` configuráveis por ambiente)
-- **Gerenciador de Pacotes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
-- **Qualidade de Código & Linter:** [Ruff](https://astral.sh/ruff)
-- **Testes:** [pytest](https://docs.pytest.org/) com Databricks Connect (`databricks-connect`)
+```text
+etl-iti-icp-brasil/
+â”œâ”€â”€ .github/                             # AutomaÃ§Ãµes de CI/CD (GitHub Actions)
+â”‚   â””â”€â”€ workflows/
+â”‚       â”œâ”€â”€ python-cicd-validado.yml     # Pipeline de testes, linter e validaÃ§Ã£o Databricks
+â”‚       â””â”€â”€ python-package.yml           # Pipeline auxiliar
+â”‚
+â”œâ”€â”€ .vscode/                             # ConfiguraÃ§Ãµes do VS Code e stubs Spark/Databricks
+â”‚   â”œâ”€â”€ settings.json
+â”‚   â””â”€â”€ __builtins__.pyi
+â”‚
+â”œâ”€â”€ databricks.yml                       # ConfiguraÃ§Ã£o do Databricks Asset Bundle (DAB)
+â”œâ”€â”€ pyproject.toml                       # Gerenciamento de dependÃªncias Python (uv / hatchling)
+â”œâ”€â”€ uv.lock                              # Lockfile de dependÃªncias com versÃµes fixadas
+â”‚
+â”œâ”€â”€ resources/                           # Recursos declarativos do Databricks
+â”‚   â””â”€â”€ ITI_ICP_BRASIL_etl.pipeline.yml  # DefiniÃ§Ã£o da pipeline Delta Live Tables (DLT)
+â”‚
+â”œâ”€â”€ src/                                 # CÃ³digo-fonte da aplicaÃ§Ã£o e pipelines
+â”‚   â”œâ”€â”€ ITI_ICP_BRASIL/                  # Pacote Python principal de extraÃ§Ã£o e tratamento
+â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”œâ”€â”€ main.py                      # Entry point de execuÃ§Ã£o do pacote
+â”‚   â”‚   â”œâ”€â”€ assets/                      # MÃ³dulo de extraÃ§Ã£o de dados e chamadas Ã  API
+â”‚   â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”‚   â””â”€â”€ url_iti.py               # ExtraÃ§Ã£o de detalhes e entidades do ITI
+â”‚   â”‚   â”œâ”€â”€ processamento/               # MÃ³dulo de transformaÃ§Ã£o e normalizaÃ§Ã£o de dados
+â”‚   â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”‚   â””â”€â”€ flatten.py               # Algoritmo de achatamento recursivo de JSON aninhado
+â”‚   â”‚   â”œâ”€â”€ exportacao/                  # MÃ³dulo de carga e integraÃ§Ã£o com Databricks
+â”‚   â”‚   â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”‚   â”‚   â””â”€â”€ upload_raw.py            # Upload de dados brutos para Volumes do Unity Catalog
+â”‚   â”‚   â”œâ”€â”€ config/                      # ConfiguraÃ§Ãµes de conexÃ£o e variÃ¡veis
+â”‚   â”‚   â””â”€â”€ output/                      # UtilitÃ¡rios de saÃ­da e escrita
+â”‚   â”‚
+â”‚   â””â”€â”€ ITI_ICP_BRASIL_etl/              # Pipelines declarativas DLT no Databricks
+â”‚       â”œâ”€â”€ README.md
+â”‚       â””â”€â”€ transformations/             # Scripts de transformaÃ§Ã£o (Raw -> Bronze -> Silver -> Gold)
+â”‚           â””â”€â”€ .gitkeep
+â”‚
+â”œâ”€â”€ tests/                               # Testes automatizados (Unit & Integration tests)
+â”‚   â”œâ”€â”€ conftest.py                      # Fixtures e inicializaÃ§Ã£o de sessÃ£o Spark/Connect
+â”‚   â””â”€â”€ test_package.py                  # Testes unitÃ¡rios do pacote
+â”‚
+â”œâ”€â”€ fixtures/                            # Dados de teste e mocks
+â”‚   â””â”€â”€ .gitkeep
+â”‚
+â”œâ”€â”€ .gitignore                           # Regras de exclusÃ£o do Git
+â””â”€â”€ README.md                            # DocumentaÃ§Ã£o principal do projeto
+```
 
 ---
 
-## 🚀 Como Começar
+## ðŸ› ï¸ Stack TecnolÃ³gica
 
-### 1. Pré-requisitos
-- **Python:** Versão `>=3.10, <3.13`
+- **OrquestraÃ§Ã£o & Plataforma:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
+- **Engine de Processamento:** Apache Spark / PySpark & [Delta Live Tables (DLT)](https://docs.databricks.com/delta-live-tables/index.html)
+- **GovernanÃ§a & Armazenamento:** Databricks Unity Catalog (`Volumes` gerenciados e Delta Tables)
+- **SDK & IntegraÃ§Ãµes:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`)
+- **Gerenciador de Pacotes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
+- **Qualidade de CÃ³digo & Linter:** [Ruff](https://astral.sh/ruff)
+- **Testes:** [pytest](https://docs.pytest.org/) com Databricks Connect (`databricks-connect`)
+- **CI/CD:** GitHub Actions com execuÃ§Ã£o em matriz multi-versÃ£o (Python 3.10, 3.11 e 3.12)
+
+---
+
+## ðŸš€ Como ComeÃ§ar
+
+### 1. PrÃ©-requisitos
+- **Python:** VersÃ£o `>=3.10, <3.13`
 - **Gerenciador UV:** [Instalar o UV](https://docs.astral.sh/uv/getting-started/installation/)
 - **Databricks CLI:** [Instalar Databricks CLI v0.200+](https://docs.databricks.com/dev-tools/cli/databricks-cli.html)
 
 ### 2. Configurar o Ambiente Local
 
-Sincronize as dependências virtuais com `uv` diretamente na raiz do projeto:
+Sincronize as dependÃªncias virtuais com `uv` diretamente na raiz do projeto:
 
 ```bash
-# Criar ambiente virtual e instalar dependências de desenvolvimento
+# Criar ambiente virtual e instalar dependÃªncias de desenvolvimento
 uv sync --dev
 ```
 
-### 3. Autenticação no Databricks
+### 3. AutenticaÃ§Ã£o no Databricks
+
+Configure a autenticaÃ§Ã£o com o seu workspace:
 
 ```bash
 databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
@@ -92,25 +124,26 @@ databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
 
 ---
 
-## ⚙️ Ciclo de Desenvolvimento & Deploy
+## âš™ï¸ ExecuÃ§Ã£o e IngestÃ£o de Dados
 
-O projeto conta com alvos de deploy parametrizados (`dev` e `prod`) em [databricks.yml](file:///c:/Users/gbarb/Documents/PITON/icp_brasil/databricks.yml):
+### ðŸ“¥ IngestÃ£o Manual da API para a Camada Raw (Volume Unity Catalog)
 
-| Alvo (`target`) | Modo | Catálogo / Schema | Descrição |
-| :--- | :--- | :--- | :--- |
-| **`dev`** *(default)* | Development | `workspace` / `${workspace.current_user.short_name}` | Recursos prefixados com `[dev user]`, triggers e schedules pausados. |
-| **`prod`** | Production | `workspace` / `prod` | Deploy para o path centralizado de produção com execução agendada. |
-
-### Comandos do Databricks Bundle:
+Para extrair os dados da API oficial do ITI e enviar o JSON bruto para o Volume `/Volumes/lakehouse_iti/0_raw/raw/entidades.json`:
 
 ```bash
-# Validar sintaxe das configurações e schemas
+uv run python src/ITI_ICP_BRASIL/exportacao/upload_raw.py
+```
+
+### ðŸš€ Comandos do Databricks Asset Bundle:
+
+```bash
+# Validar sintaxe das configuraÃ§Ãµes e schemas do bundle
 databricks bundle validate
 
-# Deploy em ambiente de desenvolvimento (padrão)
+# Deploy em ambiente de desenvolvimento
 databricks bundle deploy
 
-# Deploy em ambiente de produção
+# Deploy em ambiente de produÃ§Ã£o
 databricks bundle deploy --target prod
 
 # Executar pipeline no Databricks
@@ -119,17 +152,18 @@ databricks bundle run
 
 ---
 
-## 🧪 Testes e Qualidade de Código
+## ðŸ§ª Testes e Qualidade de CÃ³digo
 
-Execute a suíte de testes unitários e o linter diretamente na raiz:
+Execute a suÃ­te de testes unitÃ¡rios e o linter:
 
 ```bash
-# Executar testes unitários com pytest
+# Executar testes unitÃ¡rios com pytest
 uv run pytest
 
-# Executar linter e checagem de estilo de código
+# Executar linter e checagem de estilo de cÃ³digo
 uv run ruff check .
 
-# Formatar código automaticamente
+# Formatar cÃ³digo automaticamente
 uv run ruff format .
 ```
+
