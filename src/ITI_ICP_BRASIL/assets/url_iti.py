@@ -1,7 +1,7 @@
 import requests
 from ITI_ICP_BRASIL.processamento.flatten import flatten
 
-url = 'https://www.estrutura.iti.gov.br/assets/json/details.json'
+url = 'https://estrutura.iti.gov.br/assets/jsons/details.json'
 
 def obter_entidade():
     response = requests.get(url, timeout=30)
