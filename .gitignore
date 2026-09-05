@@ -42,6 +42,7 @@ ENV/
 databricks.yml.backup
 *.backup
 *.local.yml
+databricks.yml.backup
 
 # Testing & Linters
 .pytest_cache/
