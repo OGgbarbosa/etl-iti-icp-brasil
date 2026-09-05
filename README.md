@@ -17,13 +17,14 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                   ▼ (Módulo de Extração & Flatten)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 0_raw (Volumes do Unity Catalog)                                          │
-│ └── Armazenamento de arquivos semiestruturados brutos (.json / .csv)             │
+│ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                      │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Delta Live Tables / Apache Spark)
+                                  ▼ (Conversão CSV & Statement Execution API / DLT)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 1_bronze (Tabelas Delta)                                                  │
-│ └── Ingestão bruta com esquema tipado e metadados de auditoria                   │
+│ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
+│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv                 │
+│ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)    │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
                                   ▼ (Transformações, Limpeza & Qualidade)
@@ -75,7 +76,8 @@ etl-iti-icp-brasil/
 │   │   │   └── flatten.py               # Algoritmo de desaninhamento recursivo de estruturas JSON
 │   │   ├── exportacao/                  # Módulo de carga e persistência de dados
 │   │   │   ├── __init__.py
-│   │   │   └── upload_raw.py            # Upload de dados brutos para Volumes do Unity Catalog
+│   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
+│   │   │   └── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
 │   │   ├── config/                      # Configurações gerais e parâmetros de ambiente
 │   │   └── output/                      # Utilitários de escrita e geração de relatórios
 │   │
@@ -104,11 +106,11 @@ O projeto utiliza ferramentas de padrões modernos de Engenharia de Dados em Nuv
 - **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
 - **Motor de Computação Distribuída:** Apache Spark / PySpark & [Delta Live Tables (DLT)](https://docs.databricks.com/delta-live-tables/index.html)
 - **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados e Tabelas Delta)
-- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`)
+- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`)
 - **Gerenciador de Dependências e Ambientes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
 - **Análise Estática de Código e Formatação:** [Ruff](https://astral.sh/ruff)
 - **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com Databricks Connect (`databricks-connect`)
-- **Integração e Entrega Contínuas (CI/CD):** GitHub Actions com matriz de execução multi-versão (Python 3.10, 3.11 e 3.12)
+- **Integração e Entrega Contínuas (CI/CD):** GitHub Actions com validação de linters, testes unitários e deploy do bundle
 
 ---
 
@@ -129,7 +131,7 @@ uv sync --dev
 
 ### 4.3. Autenticação no Databricks
 
-Realize a autenticação segura com o workspace de destino:
+Configure as variáveis de ambiente necessárias ou realize o login via Databricks CLI:
 
 ```bash
 databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
@@ -139,15 +141,26 @@ databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
 
 ## 5. ⚙️ Execução das Etapas de ETL e Ingestão de Dados
 
-### 5.1. Ingestão da Camada Raw (Volumes do Unity Catalog)
+### 5.1. Ingestão da Camada Raw (JSON para Volume)
 
-Para executar a chamada à API oficial do ITI, realizar o desaninhamento das estruturas hierárquicas e persistir o arquivo bruto no Volume `/Volumes/lakehouse_iti/0_raw/raw/entidades.json`:
+Executa a extração da API oficial do ITI, aplica o desaninhamento estrutural (*flatten*) e envia o arquivo JSON para o Volume do Unity Catalog:
 
 ```bash
 uv run python src/ITI_ICP_BRASIL/exportacao/upload_raw.py
 ```
+- **Destino:** `/Volumes/lakehouse_iti/0_raw/raw/entidades.json`
 
-### 5.2. Comandos do Databricks Asset Bundle (DAB)
+### 5.2. Ingestão da Camada Bronze (Conversão CSV & Tabela Delta)
+
+Converte o JSON da camada Raw para CSV no Volume Bronze e cria/atualiza a tabela Delta correspondente com metadados de auditoria:
+
+```bash
+uv run python src/ITI_ICP_BRASIL/exportacao/upload_bronze.py
+```
+- **Volume Destino:** `/Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv`
+- **Tabela Delta Destino:** `lakehouse_iti.1_bronze.entidades` (campos adicionais: `nome_arquivo`, `data_insercao`)
+
+### 5.3. Comandos do Databricks Asset Bundle (DAB)
 
 ```bash
 # Validação sintática das configurações e declarações do bundle
