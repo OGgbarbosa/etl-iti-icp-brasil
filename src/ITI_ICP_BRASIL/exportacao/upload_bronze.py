@@ -3,6 +3,7 @@ import io
 import json
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import NotFound
 from databricks.sdk.service.catalog import VolumeType
 
 
@@ -15,7 +16,7 @@ def upload_volume_bronze():
     nome_volume_completo = "lakehouse_iti.1_bronze.bronze"
     try:
         w.volumes.read(nome_volume_completo)
-    except Exception:
+    except NotFound:
         print("Volume não encontrado. Criando volume lakehouse_iti.1_bronze.bronze...")
         w.volumes.create(
             catalog_name="lakehouse_iti",
@@ -33,7 +34,7 @@ def upload_volume_bronze():
         return
 
     # Coleta todas as chaves existentes para o cabeçalho do CSV
-    chaves = list({k: None for item in dados for k in item.keys()}.keys())
+    chaves = list({k: None for item in dados for k in item}.keys())
 
     buffer_csv = io.StringIO()
     writer = csv.DictWriter(buffer_csv, fieldnames=chaves)
