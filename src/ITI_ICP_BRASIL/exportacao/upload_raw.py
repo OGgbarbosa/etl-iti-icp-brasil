@@ -1,6 +1,8 @@
 import io
 import json
+
 from databricks.sdk import WorkspaceClient
+
 from ITI_ICP_BRASIL.assets.url_iti import obter_entidade
 
 
