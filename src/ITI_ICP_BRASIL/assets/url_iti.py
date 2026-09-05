@@ -1,4 +1,5 @@
 import requests
+
 from ITI_ICP_BRASIL.processamento.flatten import flatten
 
 url = 'https://estrutura.iti.gov.br/assets/jsons/details.json'
