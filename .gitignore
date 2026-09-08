@@ -49,3 +49,4 @@ databricks.yml.backup
 .coverage
 htmlcov/
 
+*.txt

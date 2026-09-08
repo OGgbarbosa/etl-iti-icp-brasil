@@ -22,8 +22,9 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                   │
                                   ▼ (Delta Live Tables / Apache Spark)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 1_bronze (Tabelas Delta)                                                  │
-│ └── Ingestão bruta com esquema tipado e metadados de auditoria                   │
+│ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
+│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                     │
+│ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
                                   ▼ (Transformações, Limpeza & Qualidade)
