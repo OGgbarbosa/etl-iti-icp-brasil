@@ -23,8 +23,8 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                   ▼ (Conversão CSV & Statement Execution API / DLT)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
-│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv                 │
-│ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)    │
+│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                     │
+│ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
                                   ▼ (Transformações, Limpeza & Qualidade)

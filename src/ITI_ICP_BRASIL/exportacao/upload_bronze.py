@@ -11,17 +11,17 @@ def upload_volume_bronze():
     w = WorkspaceClient()
 
     caminho_raw = "/Volumes/lakehouse_iti/0_raw/raw/entidades.json"
-    caminho_bronze = "/Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv"
+    caminho_bronze = "/Volumes/lakehouse_iti/1_bronze/raw/entidades.csv"
 
-    nome_volume_completo = "lakehouse_iti.1_bronze.bronze"
+    nome_volume_completo = "lakehouse_iti.1_bronze.raw"
     try:
         w.volumes.read(nome_volume_completo)
     except NotFound:
-        print("Volume não encontrado. Criando volume lakehouse_iti.1_bronze.bronze...")
+        print("Volume não encontrado. Criando volume lakehouse_iti.1_bronze.raw...")
         w.volumes.create(
             catalog_name="lakehouse_iti",
             schema_name="1_bronze",
-            name="bronze",
+            name="raw",
             volume_type=VolumeType.MANAGED,
         )
 
@@ -58,7 +58,7 @@ def upload_volume_bronze():
 def upload_tabela_bronze():
 
     w = WorkspaceClient()
-    caminho_bronze = "/Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv"
+    caminho_bronze = "/Volumes/lakehouse_iti/1_bronze/raw/entidades.csv"
 
     # Criação/Carga da tabela Delta no Unity Catalog a partir do CSV salvo no Volume
     tabela_destino = "lakehouse_iti.1_bronze.entidades"
@@ -76,8 +76,8 @@ def upload_tabela_bronze():
     CREATE OR REPLACE TABLE {tabela_destino} AS
     SELECT 
         *,
-        _FILE_NAME as nome_arquivo,
-        current_timestamp as data_insercao
+        _metadata.file_name as nome_arquivo,
+        current_timestamp() as data_insercao
     FROM read_files(
         '{caminho_bronze}',
         format => 'csv',
@@ -86,11 +86,17 @@ def upload_tabela_bronze():
     );
     """
 
-    w.statement_execution.execute_statement(
+    resposta = w.statement_execution.execute_statement(
         warehouse_id=warehouse_id,
         statement=sql_statement,
-        wait_timeout="50s"
+        wait_timeout="50s",
     )
+
+    estado = resposta.status.state if resposta.status else None
+    if estado and estado.value in ["FAILED", "CANCELED", "CLOSED"]:
+        erro_msg = resposta.status.error.message if resposta.status.error else "Erro desconhecido"
+        print(f"❌ Falha ao criar tabela: {erro_msg}")
+        return
 
     print(f"✅ Tabela Delta '{tabela_destino}' criada/atualizada com sucesso no Unity Catalog!")
 
