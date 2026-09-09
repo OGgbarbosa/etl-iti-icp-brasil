@@ -1,21 +1,10 @@
-from databricks.sdk.runtime import spark
-import csv
-import io
-import json
-
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound
-from databricks.sdk.service.catalog import VolumeType
-
-from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
 
 
 def upload_silver_entidades():
     
     w = WorkspaceClient()
-
-    caminho_silver = "/Volumes/lakehouse_iti/2_silver/tb_entidades"
 
     tabela_destino = "lakehouse_iti.2_silver.tb_entidades"
     print(f"Criando/atualizando tabela Delta: {tabela_destino}...")
@@ -30,14 +19,27 @@ def upload_silver_entidades():
     # Garante que o schema 2_silver existe
     try:
         w.schemas.get("lakehouse_iti.2_silver")
-    except Exception:
+    except NotFound:
         print("Schema 'lakehouse_iti.2_silver' não encontrado. Criando schema...")
-        w.schemas.create(name="2_silver", catalog_name="lakehouse_iti")
+        w.schemas.create(
+            name="2_silver", 
+            catalog_name="lakehouse_iti"
+        )
 
-    sql_statement = """
+    sql_statement_entidades = """
     CREATE OR REPLACE TABLE lakehouse_iti.2_silver.tb_entidades AS
     SELECT 
         CAST(id AS BIGINT) AS id_entidade,
+        TRIM(REGEXP_REPLACE(nome, '\\s+', ' ')) AS nome_entidade,
+        LPAD(REGEXP_REPLACE(cnpj, '[^0-9]', ''), 14, '0') AS cnpj,
+        UPPER(tipo) as tipo_entidade,
+        UPPER(entidade) as descricao_tipo_entidade,
+        CAST(nivel AS INT) as nivel_hierarquico,
+        CAST(situacao AS INT) as codigo_situacao,
+        CASE WHEN situacao = 4002 THEN 'Credenciada' ELSE 'Em Credenciamento' END as situacao,
+        TO_DATE(dt_credenciamento, 'yyyy-MM-dd') as data_credenciamento,
+        CAST(processo as BIGINT) as numero_processo,
+        telefone,
         current_timestamp() as data_processamento
     FROM lakehouse_iti.1_bronze.entidades
     WHERE id IS NOT NULL;
@@ -46,7 +48,7 @@ def upload_silver_entidades():
     print("Criando tabela Delta lakehouse_iti.2_silver.tb_entidades...")
     resposta = w.statement_execution.execute_statement(
         warehouse_id=warehouse_id,
-        statement=sql_statement,
+        statement=sql_statement_entidades,
         wait_timeout="50s",
     )
 
