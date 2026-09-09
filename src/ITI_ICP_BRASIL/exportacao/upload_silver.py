@@ -2,18 +2,14 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound
 
 
-def upload_silver_entidades():
-    
+def garantir_schema_silver():
     w = WorkspaceClient()
-
-    tabela_destino = "lakehouse_iti.2_silver.tb_entidades"
-    print(f"Criando/atualizando tabela Delta: {tabela_destino}...")
 
     # Busca o primeiro SQL Warehouse disponível
     warehouses = list(w.warehouses.list())
     if not warehouses:
         print("⚠️ Nenhum SQL Warehouse encontrado para criar a tabela automaticamente via SQL.")
-        return
+        return None, None
     warehouse_id = warehouses[0].id
 
     # Garante que o schema 2_silver existe
@@ -25,8 +21,22 @@ def upload_silver_entidades():
             name="2_silver", 
             catalog_name="lakehouse_iti"
         )
+        print("✅ Schema 'lakehouse_iti.2_silver' criado com sucesso!")
+        return w, warehouse_id
+    else:
+        print("✅ Schema 'lakehouse_iti.2_silver' já existe!")
+        return w, warehouse_id
 
-    sql_statement_entidades = """
+
+def upload_silver_entidades():
+    w, warehouse_id = garantir_schema_silver()
+    if not w or not warehouse_id:
+        return
+
+    tabela_destino_entidades = "lakehouse_iti.2_silver.tb_entidades"
+    print(f"Criando/atualizando tabela Delta: {tabela_destino_entidades}...")
+
+    sql_statement = """
     CREATE OR REPLACE TABLE lakehouse_iti.2_silver.tb_entidades AS
     SELECT 
         CAST(id AS BIGINT) AS id_entidade,
@@ -45,10 +55,9 @@ def upload_silver_entidades():
     WHERE id IS NOT NULL;
     """
 
-    print("Criando tabela Delta lakehouse_iti.2_silver.tb_entidades...")
     resposta = w.statement_execution.execute_statement(
         warehouse_id=warehouse_id,
-        statement=sql_statement_entidades,
+        statement=sql_statement,
         wait_timeout="50s",
     )
 
@@ -59,6 +68,7 @@ def upload_silver_entidades():
         return
 
     print("✅ Tabela Silver 'lakehouse_iti.2_silver.tb_entidades' criada com sucesso!")
+
 
 if __name__ == "__main__":
     upload_silver_entidades()
