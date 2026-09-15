@@ -32,7 +32,6 @@ def upload_silver_entidades(spark=None):
                 F.col("id").cast(LongType()).alias("id_entidade"),
                 F.trim(F.regexp_replace(F.col("nome"), r"\s+", " ")).alias("nome_entidade"),
                 F.lpad(F.regexp_replace(F.col("cnpj"), r"[^0-9]", ""), 14, "0").alias("cnpj"),
-                F.upper(F.col("tipo")).alias("tipo_entidade"),
                 F.upper(F.col("entidade")).alias("descricao_tipo_entidade"),
                 F.col("nivel").cast(IntegerType()).alias("nivel_hierarquico"),
                 F.col("situacao").cast(IntegerType()).alias("codigo_situacao"),
@@ -72,17 +71,33 @@ def upload_silver_enderecos(spark=None):
     try:
         df_bronze = spark.read.table(tabela_origem)
 
-        df_enderecos = (
+
+        # 1. Tratamento do Número: Remove "Nº", "Nº ", espaços extras e se ficar vazio vira NULL
+        numero_tratado  = F.nullif(
+            F.trim(F.regexp_replace(F.col('enderecos_0_numero'), r'(?i)N[º°\.]\s*|^\s*$', '')), 
+            F.lit('')
+        )
+
+        # 2. Tratamento do CEP: Garante o formato 00000-000 (O Google Maps lê melhor com hífen)
+        cep_limpo = F.when(
+            F.col('enderecos_0_cep').rlike(r'^\d{8}$'),
+            F.regexp_replace(F.col('enderecos_0_cep'), r'(\d{5})(\d{3})', r'$1-$2')
+        ).otherwise(F.col('enderecos_0_cep'))
+
+            
+
+        df_enderecos = (    
             df_bronze
             .filter(F.col("id").isNotNull())
             .select(
                 F.col("id").cast(LongType()).alias("id_entidade"),
-                F.upper(F.col("enderecos_0_uf")).alias("uf"),
-                F.upper(F.col("enderecos_0_cidade")).alias("cidade"),
-                F.upper(F.col("enderecos_0_complemento")).alias("complemento"),
+                F.concat_ws(", ",F.initcap(F.concat_ws(" ",F.coalesce(numero_tratado,F.col('enderecos_0_complemento')),F.col('enderecos_0_logradouro'))),F.initcap(F.col('enderecos_0_bairro')),F.initcap(F.col('enderecos_0_cidade')),F.upper(F.col('enderecos_0_uf')),cep_limpo).alias('endereco_completo'),
                 F.upper(F.col("enderecos_0_logradouro")).alias("logradouro"),
-                F.upper(F.col("enderecos_0_bairro")).alias("bairro"),
                 F.regexp_extract(F.col("enderecos_0_numero"), r"(\d+)", 1).try_cast(LongType()).alias("numero"),
+                F.upper(F.col("enderecos_0_complemento")).alias("complemento"),
+                F.upper(F.col("enderecos_0_bairro")).alias("bairro"),
+                F.upper(F.col("enderecos_0_cidade")).alias("cidade"),
+                F.upper(F.col("enderecos_0_uf")).alias("uf"),
                 F.regexp_replace(F.col("enderecos_0_cep"), r"[^0-9]", "").alias("cep"),
                 F.current_timestamp().alias("data_processamento"),
             )
@@ -119,12 +134,12 @@ def upload_silver_hierarquia(spark=None):
             df_bronze
             .filter(F.col("id").isNotNull())
             .select(
-                F.col("id").cast(LongType()).alias("id_entidade_filho"),
                 F.col("ids_pai_0_id").cast(LongType()).alias("id_entidade_pai"),
-                F.col("nivel").cast(IntegerType()).alias("nivel_pai"),
+                F.col("id").cast(LongType()).alias("id_entidade"),
+                F.col("nivel").cast(IntegerType()).alias("nivel_hierarquia_filho"),
                 F.current_timestamp().alias("data_processamento"),
             )
-            .dropDuplicates(["id_entidade_filho", "id_entidade_pai"])
+            .dropDuplicates(["id_entidade"])
         )
 
         (
