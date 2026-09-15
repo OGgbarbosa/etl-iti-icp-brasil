@@ -71,20 +71,24 @@ def upload_silver_enderecos(spark=None):
     try:
         df_bronze = spark.read.table(tabela_origem)
 
-
-        # 1. Tratamento do Número: Remove "Nº", "Nº ", espaços extras e se ficar vazio vira NULL
         numero_tratado  = F.nullif(
             F.trim(F.regexp_replace(F.col('enderecos_0_numero'), r'(?i)N[º°\.]\s*|^\s*$', '')), 
             F.lit('')
         )
 
-        # 2. Tratamento do CEP: Garante o formato 00000-000 (O Google Maps lê melhor com hífen)
         cep_limpo = F.when(
             F.col('enderecos_0_cep').rlike(r'^\d{8}$'),
             F.regexp_replace(F.col('enderecos_0_cep'), r'(\d{5})(\d{3})', r'$1-$2')
         ).otherwise(F.col('enderecos_0_cep'))
 
-            
+        regiao = (
+            F.when(F.col("enderecos_0_uf").isin("SP", "RJ", "MG", "ES"), "SUDESTE")
+            .when(F.col("enderecos_0_uf").isin("PR", "SC", "RS"), "SUL")
+            .when(F.col("enderecos_0_uf").isin("DF", "GO", "MT", "MS"), "CENTRO-OESTE")
+            .when(F.col("enderecos_0_uf").isin("BA", "PE", "CE", "MA", "PB", "RN", "AL", "SE", "PI"), "NORDESTE")
+            .when(F.col("enderecos_0_uf").isin("AM", "PA", "AC", "RO", "RR", "AP", "TO"), "NORTE")
+            .otherwise("NÃO INFORMADO")
+            )
 
         df_enderecos = (    
             df_bronze
@@ -98,6 +102,7 @@ def upload_silver_enderecos(spark=None):
                 F.upper(F.col("enderecos_0_bairro")).alias("bairro"),
                 F.upper(F.col("enderecos_0_cidade")).alias("cidade"),
                 F.upper(F.col("enderecos_0_uf")).alias("uf"),
+                regiao.alias("regiao"), 
                 F.regexp_replace(F.col("enderecos_0_cep"), r"[^0-9]", "").alias("cep"),
                 F.current_timestamp().alias("data_processamento"),
             )
