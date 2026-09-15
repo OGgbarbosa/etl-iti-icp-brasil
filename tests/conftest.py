@@ -30,7 +30,7 @@ def _enable_fallback_compute() -> None:
         print(f"  See {url} for manual configuration.", file=sys.stdout)
 
         os.environ["DATABRICKS_SERVERLESS_COMPUTE_ID"] = "auto"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"⚠️ Could not resolve Databricks workspace config: {exc}", file=sys.stderr)
 
 
@@ -62,7 +62,7 @@ def spark() -> SparkSession:
         if hasattr(DatabricksSession.builder, "validateSession"):
             return DatabricksSession.builder.validateSession().getOrCreate()
         return DatabricksSession.builder.getOrCreate()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         pytest.skip(
             f"Databricks Connect session could not be established: {exc}\n"
             "Ensure you are authenticated with 'databricks configure' and have compute access."
