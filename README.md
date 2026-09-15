@@ -1,7 +1,7 @@
 # 🏛️ ETL ITI - ICP-Brasil (Databricks Lakehouse & Asset Bundles)
 
 > ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (*Work in Progress*)**  
-> Pipeline de engenharia de dados voltado à extração, normalização e carga de dados públicos de entidades e certificados digitais da Infraestrutura de Chaves Públicas Brasileira (ICP-Brasil) no Databricks Unity Catalog.
+> Pipeline de engenharia de dados voltado à extração, normalização, modelagem dimensional e carga de dados públicos de entidades e certificados digitais da Infraestrutura de Chaves Públicas Brasileira (ICP-Brasil) no Databricks Unity Catalog.
 
 ---
 
@@ -23,17 +23,19 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                   ▼ (Conversão CSV & Statement Execution API / DLT)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
-│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                     │
+│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                    │
 │ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Transformações, Limpeza & Qualidade)
+                                  ▼ (Transformações, Deduplicação & PySpark Serverless)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 2_silver (Tabelas Delta)                                                  │
-│ └── Entidades normalizadas, deduplicadas e validadas                             │
+│ Camada 2_silver (Tabelas Delta Normalizadas)                                     │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_entidades                           │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos                           │
+│ └── Tabela Delta: lakehouse_iti.2_silver.tbl_hierarquia                          │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Modelagem Dimensional & Agregações)
+                                  ▼ (Modelagem Dimensional & Visões Analíticas)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 3_gold (Tabelas Delta & Visões)                                           │
 │ └── Modelagem para consumo analítico, auditoria e conformidade regulatória       │
@@ -77,7 +79,9 @@ etl-iti-icp-brasil/
 │   │   ├── exportacao/                  # Módulo de carga e persistência de dados
 │   │   │   ├── __init__.py
 │   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
-│   │   │   └── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
+│   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
+│   │   │   ├── upload_silver.py         # Criação das tabelas Silver via SQL Statement Execution API
+│   │   │   └── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
 │   │   ├── config/                      # Configurações gerais e parâmetros de ambiente
 │   │   └── output/                      # Utilitários de escrita e geração de relatórios
 │   │
@@ -105,11 +109,12 @@ O projeto utiliza ferramentas de padrões modernos de Engenharia de Dados em Nuv
 
 - **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
 - **Motor de Computação Distribuída:** Apache Spark / PySpark & [Delta Live Tables (DLT)](https://docs.databricks.com/delta-live-tables/index.html)
+- **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) com computação **Serverless** (`DatabricksSession.builder.serverless(True)`)
 - **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados e Tabelas Delta)
 - **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`)
 - **Gerenciador de Dependências e Ambientes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
 - **Análise Estática de Código e Formatação:** [Ruff](https://astral.sh/ruff)
-- **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com Databricks Connect (`databricks-connect`)
+- **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures do Databricks Connect
 - **Integração e Entrega Contínuas (CI/CD):** GitHub Actions com validação de linters, testes unitários e deploy do bundle
 
 ---
@@ -131,7 +136,7 @@ uv sync --dev
 
 ### 4.3. Autenticação no Databricks
 
-Configure as variáveis de ambiente necessárias ou realize o login via Databricks CLI:
+Configure as credenciais do Databricks no seu arquivo `~/.databrickscfg` ou utilize o comando da CLI:
 
 ```bash
 databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
@@ -157,10 +162,33 @@ Converte o JSON da camada Raw para CSV no Volume Bronze e cria/atualiza a tabela
 ```bash
 uv run python src/ITI_ICP_BRASIL/exportacao/upload_bronze.py
 ```
-- **Volume Destino:** `/Volumes/lakehouse_iti/1_bronze/bronze/entidades.csv`
+- **Volume Destino:** `/Volumes/lakehouse_iti/1_bronze/raw/entidades.csv`
 - **Tabela Delta Destino:** `lakehouse_iti.1_bronze.entidades` (campos adicionais: `nome_arquivo`, `data_insercao`)
 
-### 5.3. Comandos do Databricks Asset Bundle (DAB)
+### 5.3. Processamento da Camada Silver (Tabelas Delta Normalizadas)
+
+A camada Silver separa a estrutura desnormalizada da Bronze em tabelas relacionais limpas, tipadas e deduplicadas. Estão disponíveis duas abordagens:
+
+#### A) Via PySpark com Databricks Connect Serverless (Recomendado)
+Processa os dados distribuídos utilizando a DataFrame API do PySpark conectando-se diretamente à computação Serverless do Databricks:
+
+```bash
+uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver_pyspark.py
+```
+
+Tabelas Delta geradas:
+- **`lakehouse_iti.2_silver.tbl_entidades`**: Entidades com limpeza de strings, formatação de CNPJ (`LPAD` de 14 dígitos), padronização de datas (`data_credenciamento`), situação textual (`Credenciada` / `Em Credenciamento`) e deduplicação por chave primária (`id_entidade`).
+- **`lakehouse_iti.2_silver.tbl_enderecos`**: Endereços com extração de números (`regexp_extract` + `try_cast`), tratamento de CEPs com preservação de zeros à esquerda e deduplicação.
+- **`lakehouse_iti.2_silver.tbl_hierarquia`**: Relações hierárquicas entre entidades (`id_entidade_filho`, `id_entidade_pai`, `nivel_pai`).
+
+#### B) Via SQL Statement Execution API
+Executa instruções DDL/DML diretamente em um SQL Warehouse via Databricks SDK:
+
+```bash
+uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver.py
+```
+
+### 5.4. Comandos do Databricks Asset Bundle (DAB)
 
 ```bash
 # Validação sintática das configurações e declarações do bundle
