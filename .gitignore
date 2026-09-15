@@ -51,3 +51,4 @@ databricks.yml.backup
 htmlcov/
 
 *.txt
+*.json
