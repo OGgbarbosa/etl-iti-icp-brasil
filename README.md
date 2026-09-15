@@ -29,16 +29,19 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                   │
                                   ▼ (Transformações, Deduplicação & PySpark Serverless)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 2_silver (Tabelas Delta Normalizadas)                                     │
+│ Camada 2_silver (Tabelas Delta Normalizadas & Enriquecidas)                      │
 │ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_entidades                           │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos                           │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos (com região e end. compl.)│
 │ └── Tabela Delta: lakehouse_iti.2_silver.tbl_hierarquia                          │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
                                   ▼ (Modelagem Dimensional & Visões Analíticas)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 3_gold (Tabelas Delta & Visões)                                           │
-│ └── Modelagem para consumo analítico, auditoria e conformidade regulatória       │
+│ Camada 3_gold (Tabelas Delta Dimensionais & Fatos de Consumo)                    │
+│ ├── Dimensão: lakehouse_iti.3_gold.dim_entidade (enriquecida com região e audit.)│
+│ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia_icp (árvore de subordinação)   │
+│ ├── Fato:     lakehouse_iti.3_gold.fato_metricas_entidades (métricas por UF/tipo)│
+│ └── Visão:    lakehouse_iti.3_gold.vw_conformidade_cadastral                     │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -81,7 +84,8 @@ etl-iti-icp-brasil/
 │   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
 │   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
 │   │   │   ├── upload_silver.py         # Criação das tabelas Silver via SQL Statement Execution API
-│   │   │   └── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
+│   │   │   ├── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
+│   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
 │   │   ├── config/                      # Configurações gerais e parâmetros de ambiente
 │   │   └── output/                      # Utilitários de escrita e geração de relatórios
 │   │
@@ -112,6 +116,7 @@ O projeto utiliza ferramentas de padrões modernos de Engenharia de Dados em Nuv
 - **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) com computação **Serverless** (`DatabricksSession.builder.serverless(True)`)
 - **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados e Tabelas Delta)
 - **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`)
+- **Modelagem Dimensional:** Star Schema (Dimensões e Fatos) otimizado para consumo em ferramentas de BI e Analytics
 - **Gerenciador de Dependências e Ambientes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
 - **Análise Estática de Código e Formatação:** [Ruff](https://astral.sh/ruff)
 - **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures do Databricks Connect
@@ -167,7 +172,7 @@ uv run python src/ITI_ICP_BRASIL/exportacao/upload_bronze.py
 
 ### 5.3. Processamento da Camada Silver (Tabelas Delta Normalizadas)
 
-A camada Silver separa a estrutura desnormalizada da Bronze em tabelas relacionais limpas, tipadas e deduplicadas. Estão disponíveis duas abordagens:
+A camada Silver separa a estrutura desnormalizada da Bronze em tabelas relacionais limpas, tipadas e deduplicadas:
 
 #### A) Via PySpark com Databricks Connect Serverless (Recomendado)
 Processa os dados distribuídos utilizando a DataFrame API do PySpark conectando-se diretamente à computação Serverless do Databricks:
@@ -178,8 +183,8 @@ uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver_pyspark.py
 
 Tabelas Delta geradas:
 - **`lakehouse_iti.2_silver.tbl_entidades`**: Entidades com limpeza de strings, formatação de CNPJ (`LPAD` de 14 dígitos), padronização de datas (`data_credenciamento`), situação textual (`Credenciada` / `Em Credenciamento`) e deduplicação por chave primária (`id_entidade`).
-- **`lakehouse_iti.2_silver.tbl_enderecos`**: Endereços com extração de números (`regexp_extract` + `try_cast`), tratamento de CEPs com preservação de zeros à esquerda e deduplicação.
-- **`lakehouse_iti.2_silver.tbl_hierarquia`**: Relações hierárquicas entre entidades (`id_entidade_filho`, `id_entidade_pai`, `nivel_pai`).
+- **`lakehouse_iti.2_silver.tbl_enderecos`**: Endereços com campo consolidado `endereco_completo` formatado, enriquecimento de **`regiao`** (Sudeste, Sul, Nordeste, Centro-Oeste, Norte via UF), extração de números e tolerância de casting com `try_cast`.
+- **`lakehouse_iti.2_silver.tbl_hierarquia`**: Relações hierárquicas entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
 
 #### B) Via SQL Statement Execution API
 Executa instruções DDL/DML diretamente em um SQL Warehouse via Databricks SDK:
@@ -188,7 +193,21 @@ Executa instruções DDL/DML diretamente em um SQL Warehouse via Databricks SDK:
 uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver.py
 ```
 
-### 5.4. Comandos do Databricks Asset Bundle (DAB)
+### 5.4. Processamento da Camada Gold (Modelagem Dimensional de Consumo)
+
+A camada Gold disponibiliza as visões modeladas e otimizadas para consumo de negócio, relatórios executivos e auditoria:
+
+```bash
+uv run python src/ITI_ICP_BRASIL/exportacao/upload_gold.py
+```
+
+Modelagem disponível e roadmap:
+- **`lakehouse_iti.3_gold.dim_entidade`**: Visão dimensional 360° da entidade com endereço completo consolidado, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), dados de credenciamento e metadados de auditoria (`DT_CARGA_DW`).
+- **`lakehouse_iti.3_gold.dim_hierarquia_icp`**: *(Em desenvolvimento)* Árvore de subordinação hierárquica (AC Raiz -> AC -> AR).
+- **`lakehouse_iti.3_gold.fato_metricas_entidades`**: *(Em desenvolvimento)* Agregações analíticas e volumetria por Região, UF, Tipo e Status.
+- **`lakehouse_iti.3_gold.vw_conformidade_cadastral`**: *(Em desenvolvimento)* Visão de monitoramento de integridade cadastral e conformidade regulatória.
+
+### 5.5. Comandos do Databricks Asset Bundle (DAB)
 
 ```bash
 # Validação sintática das configurações e declarações do bundle
