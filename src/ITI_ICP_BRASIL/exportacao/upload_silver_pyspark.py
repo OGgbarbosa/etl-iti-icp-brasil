@@ -135,16 +135,26 @@ def upload_silver_hierarquia(spark=None):
     try:
         df_bronze = spark.read.table(tabela_origem)
 
+        colunas_pai = [
+            c for c in df_bronze.columns
+            if c.startswith("ids_pai_") and c.endswith("id")
+        ]
+
+        cols_pai_cast = [F.col(c).cast(LongType()) for c in colunas_pai]
+
+        array_pai = F.filter(F.array(*cols_pai_cast), lambda x: x.isNotNull())
+
         df_hierarquia = (
             df_bronze
             .filter(F.col("id").isNotNull())
+            .withColumn('id_entidade_pai', F.explode(array_pai))
             .select(
-                F.col("ids_pai_0_id").cast(LongType()).alias("id_entidade_pai"),
+                F.col("id_entidade_pai"),
                 F.col("id").cast(LongType()).alias("id_entidade"),
                 F.col("nivel").cast(IntegerType()).alias("nivel_hierarquia_filho"),
                 F.current_timestamp().alias("data_processamento"),
             )
-            .dropDuplicates(["id_entidade"])
+            .dropDuplicates(["id_entidade", 'id_entidade_pai'])
         )
 
         (
