@@ -35,7 +35,7 @@ def upload_silver_entidades(spark=None):
                 F.upper(F.col("entidade")).alias("descricao_tipo_entidade"),
                 F.col("nivel").cast(IntegerType()).alias("nivel_hierarquico"),
                 F.col("situacao").cast(IntegerType()).alias("codigo_situacao"),
-                F.when(F.col("situacao") == 4002, "Credenciada").otherwise("Em Credenciamento").alias("situacao"),
+                F.when(F.col("situacao") == 4002, "CREDENCIADA").otherwise("EM CREDENCIAMENTO").alias("situacao"),
                 F.to_date(F.col("dt_credenciamento"), "yyyy-MM-dd").alias("data_credenciamento"),
                 F.regexp_replace(F.col("processo"), r"[^0-9]", "").try_cast(LongType()).alias("numero_processo"),
                 F.col("telefone"),
