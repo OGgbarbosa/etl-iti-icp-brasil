@@ -35,7 +35,7 @@ def upload_silver_entidades(spark=None):
                 F.upper(F.col("entidade")).alias("descricao_tipo_entidade"),
                 F.col("nivel").cast(IntegerType()).alias("nivel_hierarquico"),
                 F.col("situacao").cast(IntegerType()).alias("codigo_situacao"),
-                F.when(F.col("situacao") == 4002, "Credenciada").otherwise("Em Credenciamento").alias("situacao"),
+                F.when(F.col("situacao") == 4002, "CREDENCIADA").otherwise("EM CREDENCIAMENTO").alias("situacao"),
                 F.to_date(F.col("dt_credenciamento"), "yyyy-MM-dd").alias("data_credenciamento"),
                 F.regexp_replace(F.col("processo"), r"[^0-9]", "").try_cast(LongType()).alias("numero_processo"),
                 F.col("telefone"),
@@ -135,16 +135,26 @@ def upload_silver_hierarquia(spark=None):
     try:
         df_bronze = spark.read.table(tabela_origem)
 
+        colunas_pai = [
+            c for c in df_bronze.columns
+            if c.startswith("ids_pai_") and c.endswith("id")
+        ]
+
+        cols_pai_cast = [F.col(c).cast(LongType()) for c in colunas_pai]
+
+        array_pai = F.filter(F.array(*cols_pai_cast), lambda x: x.isNotNull())
+
         df_hierarquia = (
             df_bronze
             .filter(F.col("id").isNotNull())
+            .withColumn('id_entidade_pai', F.explode(array_pai))
             .select(
-                F.col("ids_pai_0_id").cast(LongType()).alias("id_entidade_pai"),
+                F.col("id_entidade_pai"),
                 F.col("id").cast(LongType()).alias("id_entidade"),
                 F.col("nivel").cast(IntegerType()).alias("nivel_hierarquia_filho"),
                 F.current_timestamp().alias("data_processamento"),
             )
-            .dropDuplicates(["id_entidade"])
+            .dropDuplicates(["id_entidade", 'id_entidade_pai'])
         )
 
         (
