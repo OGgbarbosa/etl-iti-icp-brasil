@@ -39,7 +39,7 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 3_gold (Tabelas Delta Dimensionais & Fatos de Consumo)                    │
 │ ├── Dimensão: lakehouse_iti.3_gold.dim_entidade (enriquecida com região e audit.)│
-│ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia_icp (árvore de subordinação)   │
+│ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia     (árvore de subordinação)   │
 │ ├── Fato:     lakehouse_iti.3_gold.fato_metricas_entidades (métricas por UF/tipo)│
 │ └── Visão:    lakehouse_iti.3_gold.vw_conformidade_cadastral                     │
 └──────────────────────────────────────────────────────────────────────────────────┘
@@ -201,10 +201,14 @@ A camada Gold disponibiliza as visões modeladas e otimizadas para consumo de ne
 uv run python src/ITI_ICP_BRASIL/exportacao/upload_gold.py
 ```
 
-Modelagem disponível e roadmap:
-- **`lakehouse_iti.3_gold.dim_entidade`**: Visão dimensional 360° da entidade com endereço completo consolidado, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), dados de credenciamento e metadados de auditoria (`DT_CARGA_DW`).
-- **`lakehouse_iti.3_gold.dim_hierarquia_icp`**: *(Em desenvolvimento)* Árvore de subordinação hierárquica (AC Raiz -> AC -> AR).
-- **`lakehouse_iti.3_gold.fato_metricas_entidades`**: *(Em desenvolvimento)* Agregações analíticas e volumetria por Região, UF, Tipo e Status.
+Modelagem implementada e roadmap:
+- **`lakehouse_iti.3_gold.dim_entidade`**: Visão dimensional 360º da entidade com endereço completo consolidado, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), dados de credenciamento e metadados de auditoria (`DT_CARGA_DW`).
+- **`lakehouse_iti.3_gold.dim_hierarquia`**: Tabela dimensional com as relações diretas de subordinação entre entidades (`ID_ENTIDADE_PAI`, `ID_ENTIDADE`, `DS_NIVEL`), permitindo mapear todas as ACs subordinadoras e ARs associadas.
+- **`lakehouse_iti.3_gold.fato_metricas_entidades`**: Tabela fato gerencial calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), consolidando métricas da cadeia completa para cada autoridade (`ID_ENTIDADE`, `DS_ENTIDADE`, `DS_TIPO`, `DS_SITUACAO`, `SG_UF`, `DS_REGIAO`), incluindo totais agregados de subordinadas:
+  - `NR_AGREGADOS_AC_NIVEL_1`: Quantidade de ACs de 1º Nível subordinadas.
+  - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
+  - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia (permitindo que a **AC Raiz** e as **ACs de Nível 1** consolidem todas as suas ARs indiretas).
+  - `DT_CARGA_DW`: Timestamp de auditoria da carga.
 - **`lakehouse_iti.3_gold.vw_conformidade_cadastral`**: *(Em desenvolvimento)* Visão de monitoramento de integridade cadastral e conformidade regulatória.
 
 ### 5.5. Comandos do Databricks Asset Bundle (DAB)
