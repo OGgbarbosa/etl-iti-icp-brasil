@@ -71,7 +71,8 @@ etl-iti-icp-brasil/
 ├── src/                                 # Código-fonte principal da aplicação
 │   ├── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
 │   │   ├── __init__.py                  # Inicialização do módulo Python
-│   │   ├── main.py                      # Ponto de entrada de execução do pacote
+│   │   ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
+│   │   ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
 │   │   ├── assets/                      # Módulo de comunicação e consumo de APIs externas
 │   │   │   ├── __init__.py
 │   │   │   └── url_iti.py               # Extração de dados da API oficial de entidades do ITI
@@ -148,66 +149,68 @@ databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
 
 ---
 
-## 5. ⚙️ Execução das Etapas de ETL e Ingestão de Dados
+## 5. ⚙️ Execução da Pipeline de ETL
 
-### 5.1. Ingestão da Camada Raw (JSON para Volume)
+O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orquestrado de forma modular e pode ser executado unificadamente através do ponto de entrada principal do projeto:
 
-Executa a extração da API oficial do ITI, aplica o desaninhamento estrutural (*flatten*) e envia o arquivo JSON para o Volume do Unity Catalog:
+### 5.1. Execução Fim a Fim (Recomendado)
 
-```bash
-uv run python src/ITI_ICP_BRASIL/exportacao/upload_raw.py
-```
-- **Destino:** `/Volumes/lakehouse_iti/0_raw/raw/entidades.json`
-
-### 5.2. Ingestão da Camada Bronze (Conversão CSV & Tabela Delta)
-
-Converte o JSON da camada Raw para CSV no Volume Bronze e cria/atualiza a tabela Delta correspondente com metadados de auditoria:
+Utilizando o script entrypoint registrado no `pyproject.toml`:
 
 ```bash
-uv run python src/ITI_ICP_BRASIL/exportacao/upload_bronze.py
+uv run main
 ```
-- **Volume Destino:** `/Volumes/lakehouse_iti/1_bronze/raw/entidades.csv`
-- **Tabela Delta Destino:** `lakehouse_iti.1_bronze.entidades` (campos adicionais: `nome_arquivo`, `data_insercao`)
 
-### 5.3. Processamento da Camada Silver (Tabelas Delta Normalizadas)
-
-A camada Silver separa a estrutura desnormalizada da Bronze em tabelas relacionais limpas, tipadas e deduplicadas:
-
-#### A) Via PySpark com Databricks Connect Serverless (Recomendado)
-Processa os dados distribuídos utilizando a DataFrame API do PySpark conectando-se diretamente à computação Serverless do Databricks:
+Ou diretamente pelo interpretador Python:
 
 ```bash
-uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver_pyspark.py
+uv run python src/ITI_ICP_BRASIL/main.py
 ```
 
-Tabelas Delta geradas:
-- **`lakehouse_iti.2_silver.tbl_entidades`**: Entidades com limpeza de strings, formatação de CNPJ (`LPAD` de 14 dígitos), padronização de datas (`data_credenciamento`), situação textual (`Credenciada` / `Em Credenciamento`) e deduplicação por chave primária (`id_entidade`).
-- **`lakehouse_iti.2_silver.tbl_enderecos`**: Endereços com campo consolidado `endereco_completo` formatado, enriquecimento de **`regiao`** (Sudeste, Sul, Nordeste, Centro-Oeste, Norte via UF), extração de números e tolerância de casting com `try_cast`.
-- **`lakehouse_iti.2_silver.tbl_hierarquia`**: Relações hierárquicas entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
+### 5.2. Etapas Executadas pela Pipeline Modular
 
-#### B) Via SQL Statement Execution API
-Executa instruções DDL/DML diretamente em um SQL Warehouse via Databricks SDK:
+Ao ser executada, a função `pipeline()` em `src/ITI_ICP_BRASIL/pipeline.py` orquestra sequencialmente as seguintes etapas:
 
-```bash
-uv run python src/ITI_ICP_BRASIL/exportacao/upload_silver.py
+| Ordem | Etapa / Função | Camada | Descrição Técnica |
+| :---: | :--- | :---: | :--- |
+| **1** | `obter_entidade()` | **Assets** | Coleta os dados abertos na API oficial do ITI e aplica o desaninhamento estrutural (*flatten*). |
+| **2** | `upload_para_volume()` | **0_raw** | Envia o arquivo bruto `entidades.json` para o Volume do Unity Catalog (`/Volumes/lakehouse_iti/0_raw/raw/`). |
+| **3** | `upload_volume_bronze()` | **1_bronze** | Converte o JSON em CSV e persiste no Volume Bronze (`/Volumes/lakehouse_iti/1_bronze/raw/`). |
+| **4** | `upload_tabela_bronze()` | **1_bronze** | Cria/atualiza a tabela Delta `lakehouse_iti.1_bronze.entidades` com metadados de auditoria. |
+| **5** | `upload_silver_entidades()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_entidades` com limpeza de CNPJ e padronização. |
+| **6** | `upload_silver_enderecos()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_enderecos` com enriquecimento de região e endereço formatado. |
+| **7** | `upload_silver_hierarquia()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_hierarquia` explodindo as entidades pai (`ids_pai`). |
+| **8** | `upload_gold_entidades()` | **3_gold** | Cria a tabela dimensional `lakehouse_iti.3_gold.dim_entidade` com visão 360º e granularidade geográfica. |
+| **9** | `upload_gold_hierarquia()` | **3_gold** | Cria a tabela dimensional de subordinação `lakehouse_iti.3_gold.dim_hierarquia`. |
+| **10** | `upload_gold_metricas_entidades()` | **3_gold** | Cria a tabela fato `lakehouse_iti.3_gold.fato_metricas_entidades` via CTE recursiva consolidando métricas da cadeia. |
+
+### 5.3. Modelagem e Tabelas Geradas por Camada
+
+- **Camada 1_bronze**:
+  - `lakehouse_iti.1_bronze.entidades`: Dados brutos estruturados com metadados adicionais (`nome_arquivo`, `data_insercao`).
+- **Camada 2_silver** (PySpark & Databricks Connect Serverless):
+  - `lakehouse_iti.2_silver.tbl_entidades`: Entidades limpas, CNPJ formatado (`LPAD` de 14 dígitos), `data_credenciamento` tipada, situação normalizada e deduplicação por chave primária (`id_entidade`).
+  - `lakehouse_iti.2_silver.tbl_enderecos`: Endereços normalizados com campo consolidado `endereco_completo`, enriquecimento de `regiao` (Sudeste, Sul, Nordeste, Centro-Oeste, Norte via UF) e tolerância de casting via `try_cast`.
+  - `lakehouse_iti.2_silver.tbl_hierarquia`: Relações hierárquicas entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
+- **Camada 3_gold** (Modelagem Dimensional Star Schema):
+  - `lakehouse_iti.3_gold.dim_entidade`: Dimensão consolidada com endereço completo, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), credenciamento e auditoria (`DT_CARGA_DW`).
+  - `lakehouse_iti.3_gold.dim_hierarquia`: Dimensão com relações de subordinação direta entre entidades (`ID_ENTIDADE_PAI`, `ID_ENTIDADE`, `DS_NIVEL`).
+  - `lakehouse_iti.3_gold.fato_metricas_entidades`: Fato gerencial calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), agregando métricas da cadeia completa:
+    - `NR_AGREGADOS_AC_NIVEL_1`: Quantidade de ACs de 1º Nível subordinadas.
+    - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
+    - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia consolidada para cada autoridade.
+    - `DT_CARGA_DW`: Timestamp de auditoria da carga.
+
+### 5.4. Execução Modular / Programática
+
+Como cada camada é implementada como uma função desacoplada sem blocos diretos de `__main__`, etapas isoladas podem ser importadas e acionadas sob demanda via scripts Python ou notebooks:
+
+```python
+from ITI_ICP_BRASIL.exportacao.upload_bronze import upload_tabela_bronze
+
+# Execução direcionada de uma etapa isolada
+upload_tabela_bronze()
 ```
-
-### 5.4. Processamento da Camada Gold (Modelagem Dimensional de Consumo)
-
-A camada Gold disponibiliza as visões modeladas e otimizadas para consumo de negócio, relatórios executivos e auditoria:
-
-```bash
-uv run python src/ITI_ICP_BRASIL/exportacao/upload_gold.py
-```
-
-Modelagem implementada:
-- **`lakehouse_iti.3_gold.dim_entidade`**: Visão dimensional 360º da entidade com endereço completo consolidado, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), dados de credenciamento e metadados de auditoria (`DT_CARGA_DW`).
-- **`lakehouse_iti.3_gold.dim_hierarquia`**: Tabela dimensional com as relações diretas de subordinação entre entidades (`ID_ENTIDADE_PAI`, `ID_ENTIDADE`, `DS_NIVEL`), permitindo mapear todas as ACs subordinadoras e ARs associadas.
-- **`lakehouse_iti.3_gold.fato_metricas_entidades`**: Tabela fato gerencial calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), consolidando métricas da cadeia completa para cada autoridade (`ID_ENTIDADE`, `DS_ENTIDADE`, `DS_TIPO`, `DS_SITUACAO`, `SG_UF`, `DS_REGIAO`), incluindo totais agregados de subordinadas:
-  - `NR_AGREGADOS_AC_NIVEL_1`: Quantidade de ACs de 1º Nível subordinadas.
-  - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
-  - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia (permitindo que a **AC Raiz** e as **ACs de Nível 1** consolidem todas as suas ARs indiretas).
-  - `DT_CARGA_DW`: Timestamp de auditoria da carga.
 
 ### 5.5. Comandos do Databricks Asset Bundle (DAB)
 
