@@ -30,6 +30,3 @@ def upload_para_volume():
     )
 
     print("✅ Dados salvos no Volume do Databricks com sucesso!")
-
-if __name__ == "__main__":
-    upload_para_volume()

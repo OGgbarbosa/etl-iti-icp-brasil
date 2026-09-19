@@ -99,8 +99,3 @@ def upload_tabela_bronze():
         return
 
     print(f"✅ Tabela Delta '{tabela_destino}' criada/atualizada com sucesso no Unity Catalog!")
-
-
-if __name__ == "__main__":
-    upload_volume_bronze()
-    upload_tabela_bronze()
