@@ -168,8 +168,3 @@ def upload_silver_hierarquia(spark=None):
 
     except Exception as e:
         print(f"❌ Falha ao processar tabela '{tabela_destino}': {e}")
-
-if __name__ == "__main__":
-    upload_silver_entidades()
-    upload_silver_enderecos()
-    upload_silver_hierarquia()

@@ -105,7 +105,3 @@ def upload_silver_enderecos():
         return
 
     print("✅ Tabela Silver 'lakehouse_iti.2_silver.tbl_enderecos' criada com sucesso!")
-
-if __name__ == "__main__":
-    upload_silver_entidades()
-    upload_silver_enderecos()

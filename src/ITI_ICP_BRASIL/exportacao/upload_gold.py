@@ -170,8 +170,3 @@ def upload_gold_metricas_entidades():
         return
 
     print("✅ Tabela Gold 'lakehouse_iti.3_gold.fato_metricas_entidades' criada com sucesso!")
-
-if __name__ == "__main__":
-    upload_gold_entidades()
-    upload_gold_hierarquia()
-    upload_gold_metricas_entidades()
