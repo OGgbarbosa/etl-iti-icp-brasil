@@ -54,12 +54,10 @@ A organização de diretórios e arquivos do repositório está estruturada conf
 etl-iti-icp-brasil/
 ├── .github/                             # Automações de Integração e Entrega Contínuas (CI/CD)
 │   └── workflows/
-│       ├── python-cicd-validado.yml     # Pipeline de validação estática, testes e deploy Databricks
-│       └── python-package.yml           # Pipeline secundária de testes
+│       └── python-cicd-implementacao.yml# Pipeline de validação estática, testes e deploy Databricks
 │
 ├── .vscode/                             # Configurações de ambiente de desenvolvimento local
-│   ├── settings.json                    # Definições do interpretador e linters
-│   └── __builtins__.pyi                 # Declarações de tipagem global para Spark e Databricks
+│   └── settings.json                    # Definições do interpretador e linters
 │
 ├── databricks.yml                       # Configuração declarativa do Databricks Asset Bundle (DAB)
 ├── pyproject.toml                       # Especificação do projeto e gerenciamento de dependências
@@ -83,13 +81,11 @@ etl-iti-icp-brasil/
 │   │   │   ├── __init__.py
 │   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
 │   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
-│   │   │   ├── upload_silver.py         # Criação das tabelas Silver via SQL Statement Execution API
 │   │   │   ├── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
 │   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
-│   │   ├── config/                      # Configurações gerais e parâmetros de ambiente
-│   │   └── output/                      # Utilitários de escrita e geração de relatórios
+│   │   └── config/                      # Configurações gerais e parâmetros de ambiente
 │   │
-│   └── ITI_ICP_BRASIL_etl/              # Pipelines declarativas DLT gerenciadas pelo Databricks
+│   └── ITI_ICP_BRASIL_etl/              # Template local de pipelines declarativas DLT (ignorado no git)
 │       ├── README.md
 │       └── transformations/             # Scripts de transformação entre as camadas Medalhão
 │           └── .gitkeep
@@ -153,7 +149,7 @@ databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
 
 O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orquestrado de forma modular e pode ser executado unificadamente através do ponto de entrada principal do projeto:
 
-### 5.1. Execução Fim a Fim (Recomendado)
+### 5.1. Execução Fim a Fim
 
 Utilizando o script entrypoint registrado no `pyproject.toml`:
 
