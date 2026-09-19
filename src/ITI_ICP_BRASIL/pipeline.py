@@ -27,6 +27,3 @@ def pipeline():
     upload_gold_entidades()
     upload_gold_hierarquia()
     upload_gold_metricas_entidades()
-
-if __name__ == '__main__':
-    pipeline()
