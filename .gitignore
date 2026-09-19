@@ -1,4 +1,4 @@
-﻿# Environment variables
+# Environment variables
 .env
 *.env
 
@@ -35,14 +35,14 @@ ENV/
 .idea/
 *.swp
 *.swo
-*.claude/
+.claude/
 
 # Databricks
 .databricks/
 databricks.yml.backup
 *.backup
 *.local.yml
-databricks.yml.backup
+src/ITI_ICP_BRASIL_etl/
 
 # Testing & Linters
 .pytest_cache/
