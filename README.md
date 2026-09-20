@@ -41,6 +41,14 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 │ ├── Dimensão: lakehouse_iti.3_gold.dim_entidade (enriquecida com região e audit.)│
 │ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia (árvore de subordinação)       │
 │ └── Fato:     lakehouse_iti.3_gold.fato_metricas_entidades (métricas da cadeia)  │
+└─────────────────────────────────┬────────────────────────────────────────────────┘
+                                  │
+                                  ▼ (Visualização Analítica & Tomada de Decisão)
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard)                   │
+│ └── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
+│     ├── 21 Visualizações: KPIs, Rankings, Georreferenciamento e Séries Temporais │
+│     └── 6 Datasets Analíticos conectados diretamente às Tabelas Gold             │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -59,11 +67,15 @@ etl-iti-icp-brasil/
 ├── .vscode/                             # Configurações de ambiente de desenvolvimento local
 │   └── settings.json                    # Definições do interpretador e linters
 │
-├── databricks.yml                       # Configuração declarativa do Databricks Asset Bundle (DAB)
-├── pyproject.toml                       # Especificação do projeto e gerenciamento de dependências
-├── uv.lock                              # Registro determinístico de versões de dependências
+├── docs/                                # Documentação técnica e relatórios visuais
+│   └── dashboards/                      # Ativos visuais e relatórios do dashboard
+│       ├── Painel de Entidades ITI.pdf  # Captura oficial em PDF exportada do Databricks
+│       └── painel_entidades_iti.png     # Renderização visual em alta resolução do painel
 │
 ├── resources/                           # Definições declarativas de recursos no Databricks
+│   ├── dashboards/                      # Especificações de dashboards (Lakeview / AI/BI)
+│   │   └── Painel de Entidades ITI.lvdash.json # Definição declarativa do dashboard
+│   ├── ITI_ICP_BRASIL_dashboard.yml     # Declaração do Dashboard AI/BI no Asset Bundle
 │   └── ITI_ICP_BRASIL_etl.pipeline.yml  # Pipeline declarativa Delta Live Tables (DLT)
 │
 ├── src/                                 # Código-fonte principal da aplicação
@@ -97,6 +109,9 @@ etl-iti-icp-brasil/
 ├── fixtures/                            # Conjuntos de dados estáticos para validação e testes
 │   └── .gitkeep
 │
+├── databricks.yml                       # Configuração declarativa do Databricks Asset Bundle (DAB)
+├── pyproject.toml                       # Especificação do projeto e gerenciamento de dependências
+├── uv.lock                              # Registro determinístico de versões de dependências
 ├── .gitignore                           # Regras de exclusão de arquivos no controle de versão
 └── README.md                            # Documentação técnica principal do projeto
 ```
@@ -226,7 +241,67 @@ databricks bundle run
 
 ---
 
-## 6. 🧪 Qualidade de Software e Testes Automatizados
+## 6. 📊 Painel de Visualização & Analytics (Databricks AI/BI Dashboard)
+
+O projeto inclui o painel analítico oficial **Painel de Entidades ITI**, implementado no **Databricks AI/BI Lakeview** e versionado como código declarativo (`resources/dashboards/Painel de Entidades ITI.lvdash.json`) integrado diretamente ao Databricks Asset Bundle (`resources/ITI_ICP_BRASIL_dashboard.yml`).
+
+![Painel de Entidades ITI](docs/dashboards/painel_entidades_iti.png)
+
+### 6.1. Visão Geral dos Indicadores e Métricas (KPIs)
+
+O painel consolida mais de 2.100 entidades ativas e em credenciamento em todo o território nacional, agrupadas nas seguintes camadas de decisão:
+
+| Bloco de Indicadores | Métrica Principal | Valor Consolidado | Dimensões de Apoio |
+| :--- | :--- | :---: | :--- |
+| **Visão Geral** | Total de Entidades | **2.158** | 27 UFs Atendidas / 5 Regiões do Brasil |
+| **Autoridades Certificadoras (AC 1º Nível)** | Entidades AC Nível 1 | **20** | 5 UFs / 3 Regiões |
+| **Autoridades Certificadoras (AC 2º Nível)** | Entidades AC Nível 2 | **106** | 13 UFs / 4 Regiões |
+| **Autoridades de Registro (AR)** | Total de Entidades AR | **2.031** | 27 UFs / 5 Regiões |
+
+### 6.2. Gráficos Analíticos e Visualizações
+
+1. **Distribuição Geográfica por Região & Top 10 UFs:**
+   - Gráficos de barras destacando a predominância da Região Sudeste e os estados com maior número de entidades credenciadas (SP, MG, SC, RS, RJ, PR, GO, DF, BA, MT).
+2. **Composição por Tipo e Situação:**
+   - Gráficos de rosca (*donut charts*) exibindo a proporção entre tipos (AR, AC 2º Nível, AC 1º Nível e AC Raiz) e o status cadastral (*CREDENCIADA* vs *EM CREDENCIAMENTO*).
+3. **Distribuição de Entidades por Tipo e Região:**
+   - Gráfico de barras agrupadas comparando a presença de AC Nível 1, AC Nível 2 e AR por macrorregião brasileira.
+4. **Top 10 Entidades com Mais Agregados:**
+   - Gráfico de barras empilhadas identificando os maiores nós da cadeia de confiança ICP-Brasil (e.g., AC Raiz, AC RFB, AC JUS, AC SAFEWEB, AC SOLUTI, etc.).
+5. **Evolução de Credenciamento por Ano:**
+   - Gráfico de linhas com série temporal histórica (de 2002 a 2026) demonstrando os picos de expansão e o ciclo de maturação do ecossistema de certificação digital.
+6. **Grids Analíticos de Detalhamento:**
+   - **Árvore de Hierarquia de Entidades:** Tabela relacional com paginação dinâmica permitindo rastrear a relação completa entre `Entidade Pai` ➔ `Entidade Filha`, com tipo, UF e situação.
+   - **Distribuição por Tipo e Situação:** Matriz cruzada consolidando o volume exato de entidades por modalidade e estado operacional.
+
+### 6.3. Datasets e Rastreabilidade com as Tabelas Gold
+
+O dashboard consome diretamente a modelagem dimensional criada na Camada 3_gold do Lakehouse:
+
+| Dataset no Dashboard | Tabela Gold Origem | Tipo de Consulta / Agregação |
+| :--- | :--- | :--- |
+| `dim_entidade` *(Metric View)* | `lakehouse_iti.3_gold.dim_entidade` | Métricas agregadas e filtros globais (`SG_UF`, `DS_REGIAO`, `DS_TIPO`, `DS_SITUACAO`). |
+| `top_ufs` | `lakehouse_iti.3_gold.dim_entidade` | Agrupamento por `SG_UF` com ordenação decrescente (Top 10). |
+| `top_agregados` | `lakehouse_iti.3_gold.fato_metricas_entidades` | CTE analítica somando métricas de agregação por autoridade. |
+| `evolucao` | `lakehouse_iti.3_gold.dim_entidade` | Série temporal agrupada por `YEAR(DT_CREDENCIAMENTO)` e `DS_TIPO`. |
+| `agregados_regiao` | `lakehouse_iti.3_gold.dim_entidade` | Distribuição categórica cruzada por macrorregião geográfica. |
+| `hierarquia` | `lakehouse_iti.3_gold.dim_hierarquia` + `dim_entidade` | Self-join relacional entre ancestrais e subordinados diretos. |
+
+### 6.4. Deploy Declarativo do Dashboard via Databricks Asset Bundle (DAB)
+
+O dashboard é gerenciado como código (*Dashboard-as-Code*) através do arquivo declarativo [`resources/ITI_ICP_BRASIL_dashboard.yml`](resources/ITI_ICP_BRASIL_dashboard.yml). Ao executar o deploy do bundle, o dashboard é provisionado e vinculado automaticamente ao SQL Warehouse do workspace:
+
+```bash
+# Valida a integridade da pipeline e do dashboard
+databricks bundle validate
+
+# Deploy do pipeline DLT e do Dashboard no Databricks
+databricks bundle deploy
+```
+
+---
+
+## 7. 🧪 Qualidade de Software e Testes Automatizados
 
 Para garantir a confiabilidade, manutenibilidade e conformidade das diretrizes de desenvolvimento:
 
@@ -240,3 +315,4 @@ uv run ruff check .
 # Aplicação de correções e formatação automática
 uv run ruff format .
 ```
+

@@ -1,0 +1,7 @@
+# Definição declarativa do Databricks Lakeview / AI/BI Dashboard
+resources:
+  dashboards:
+    painel_entidades_iti:
+      display_name: "Painel de Entidades ITI"
+      file_path: ./dashboards/Painel de Entidades ITI.lvdash.json
+      warehouse_id: ${var.warehouse_id}

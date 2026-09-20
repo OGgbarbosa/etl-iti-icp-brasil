@@ -1,0 +1,1902 @@
+{
+  "datasets": [
+    {
+      "name": "top_ufs",
+      "displayName": "Top 10 UFs por Entidades",
+      "queryLines": [
+        "SELECT\n",
+        "  SG_UF,\n",
+        "  COUNT(*) as qtd\n",
+        "FROM\n",
+        "  lakehouse_iti.`3_gold`.dim_entidade\n",
+        "GROUP BY\n",
+        "  SG_UF\n",
+        "ORDER BY\n",
+        "  qtd DESC\n",
+        "LIMIT 10"
+      ]
+    },
+    {
+      "name": "top_agregados",
+      "displayName": "Top 10 Entidades com Mais Agregados",
+      "queryLines": [
+        "WITH totais AS (\n",
+        "  SELECT\n",
+        "    DS_ENTIDADE,\n",
+        "    DS_TIPO,\n",
+        "    (NR_AGREGADOS_AC_NIVEL_1 + NR_AGREGADOS_AC_NIVEL_2 + NR_AGREGADOS_AR) as total_agregados,\n",
+        "    NR_AGREGADOS_AC_NIVEL_1,\n",
+        "    NR_AGREGADOS_AC_NIVEL_2,\n",
+        "    NR_AGREGADOS_AR\n",
+        "  FROM\n",
+        "    lakehouse_iti.`3_gold`.fato_metricas_entidades\n",
+        "  ORDER BY\n",
+        "    total_agregados DESC\n",
+        "  LIMIT 10\n",
+        ")\n",
+        "SELECT\n",
+        "  DS_ENTIDADE,\n",
+        "  'AC Nível 1' as tipo_agregado,\n",
+        "  NR_AGREGADOS_AC_NIVEL_1 as valor\n",
+        "FROM\n",
+        "  totais\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  DS_ENTIDADE,\n",
+        "  'AC Nível 2' as tipo_agregado,\n",
+        "  NR_AGREGADOS_AC_NIVEL_2 as valor\n",
+        "FROM\n",
+        "  totais\n",
+        "UNION ALL\n",
+        "SELECT\n",
+        "  DS_ENTIDADE,\n",
+        "  'AR' as tipo_agregado,\n",
+        "  NR_AGREGADOS_AR as valor\n",
+        "FROM\n",
+        "  totais"
+      ]
+    },
+    {
+      "name": "evolucao",
+      "displayName": "Evolução de Credenciamento por Ano",
+      "queryLines": [
+        "SELECT\n",
+        "  YEAR(DT_CREDENCIAMENTO) as ano,\n",
+        "  CASE DS_TIPO\n",
+        "    WHEN 'AC 1º NÍVEL' THEN 'AC Nível 1'\n",
+        "    WHEN 'AC 2º NÍVEL' THEN 'AC Nível 2'\n",
+        "    WHEN 'AR' THEN 'AR'\n",
+        "    ELSE DS_TIPO\n",
+        "  END as tipo_entidade,\n",
+        "  COUNT(DISTINCT ID_ENTIDADE) as qtd\n",
+        "FROM\n",
+        "  lakehouse_iti.`3_gold`.dim_entidade\n",
+        "WHERE\n",
+        "  DT_CREDENCIAMENTO IS NOT NULL\n",
+        "  AND DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL', 'AR')\n",
+        "GROUP BY\n",
+        "  YEAR(DT_CREDENCIAMENTO),\n",
+        "  CASE DS_TIPO\n",
+        "    WHEN 'AC 1º NÍVEL' THEN 'AC Nível 1'\n",
+        "    WHEN 'AC 2º NÍVEL' THEN 'AC Nível 2'\n",
+        "    WHEN 'AR' THEN 'AR'\n",
+        "    ELSE DS_TIPO\n",
+        "  END\n",
+        "ORDER BY\n",
+        "  ano,\n",
+        "  tipo_entidade"
+      ]
+    },
+    {
+      "name": "hierarquia",
+      "displayName": "Hierarquia de Entidades ITI",
+      "queryLines": [
+        "SELECT\n",
+        "  pai.DS_ENTIDADE as entidade_pai,\n",
+        "  filho.DS_ENTIDADE as entidade_filha,\n",
+        "  filho.DS_TIPO as tipo_filho,\n",
+        "  filho.SG_UF as uf_filho,\n",
+        "  filho.DS_SITUACAO as situacao_filho\n",
+        "FROM\n",
+        "  lakehouse_iti.`3_gold`.dim_hierarquia h\n",
+        "    JOIN lakehouse_iti.`3_gold`.dim_entidade pai\n",
+        "      ON h.ID_ENTIDADE_PAI = pai.ID_ENTIDADE\n",
+        "    JOIN lakehouse_iti.`3_gold`.dim_entidade filho\n",
+        "      ON h.ID_ENTIDADE = filho.ID_ENTIDADE\n",
+        "ORDER BY\n",
+        "  pai.DS_ENTIDADE,\n",
+        "  filho.DS_ENTIDADE\n",
+        "LIMIT 500"
+      ]
+    },
+    {
+      "name": "agregados_regiao",
+      "displayName": "Agregados por Região (Long Format)",
+      "queryLines": [
+        "SELECT\n",
+        "  DS_REGIAO,\n",
+        "  CASE DS_TIPO\n",
+        "    WHEN 'AC 1º NÍVEL' THEN 'AC Nível 1'\n",
+        "    WHEN 'AC 2º NÍVEL' THEN 'AC Nível 2'\n",
+        "    WHEN 'AR' THEN 'AR'\n",
+        "    ELSE DS_TIPO\n",
+        "  END as tipo_agregado,\n",
+        "  COUNT(DISTINCT ID_ENTIDADE) as valor\n",
+        "FROM\n",
+        "  lakehouse_iti.`3_gold`.dim_entidade\n",
+        "WHERE\n",
+        "  DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL', 'AR')\n",
+        "GROUP BY\n",
+        "  DS_REGIAO,\n",
+        "  CASE DS_TIPO\n",
+        "    WHEN 'AC 1º NÍVEL' THEN 'AC Nível 1'\n",
+        "    WHEN 'AC 2º NÍVEL' THEN 'AC Nível 2'\n",
+        "    WHEN 'AR' THEN 'AR'\n",
+        "    ELSE DS_TIPO\n",
+        "  END\n",
+        "ORDER BY\n",
+        "  DS_REGIAO"
+      ]
+    },
+    {
+      "name": "dim_entidade",
+      "displayName": "Dim Entidade (Metric View)",
+      "config": {
+        "version": "1.1",
+        "source": "lakehouse_iti.`3_gold`.dim_entidade",
+        "dimensions": [
+          {
+            "name": "SG_UF",
+            "expr": "SG_UF",
+            "displayName": "UF"
+          },
+          {
+            "name": "DS_REGIAO",
+            "expr": "DS_REGIAO",
+            "displayName": "Região"
+          },
+          {
+            "name": "DS_TIPO",
+            "expr": "DS_TIPO",
+            "displayName": "Tipo de Entidade"
+          },
+          {
+            "name": "DS_SITUACAO",
+            "expr": "DS_SITUACAO",
+            "displayName": "Situação"
+          }
+        ],
+        "measures": [
+          {
+            "name": "total",
+            "expr": "COUNT(1)",
+            "displayName": "Total de Entidades"
+          },
+          {
+            "name": "total_ufs",
+            "expr": "COUNT(DISTINCT SG_UF)",
+            "displayName": "Total de UFs"
+          },
+          {
+            "name": "total_regioes",
+            "expr": "COUNT(DISTINCT DS_REGIAO)",
+            "displayName": "Total de Regiões"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "186cfedd",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "dist_geografica_regiao",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "agregados_regiao",
+                  "fields": [
+                    {
+                      "name": "DS_REGIAO",
+                      "expression": "`DS_REGIAO`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showDescription": true,
+                "showTitle": true,
+                "title": {
+                  "value": "Distribuição Geográfica por Região",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Quantidade de entidades por região do Brasil",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "axis": {
+                    "hideGrid": true,
+                    "hideLabels": true,
+                    "hideTitle": true
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    }
+                  },
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "DS_REGIAO",
+                  "axis": {
+                    "hideTitle": true,
+                    "hideLabels": false
+                  },
+                  "displayName": "Região",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "DS_REGIAO",
+                  "legend": {
+                    "hideTitle": true,
+                    "hide": true,
+                    "title": "Região",
+                    "position": "bottom"
+                  },
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "natural-order"
+                    }
+                  }
+                },
+                "extra": [
+                  {
+                    "fieldName": "DS_REGIAO",
+                    "formatTemplate": "{{ @formatted }}",
+                    "displayName": "Região"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "agregados_por_regiao",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "agregados_regiao",
+                  "fields": [
+                    {
+                      "name": "tipo_agregado",
+                      "expression": "`tipo_agregado`"
+                    },
+                    {
+                      "name": "DS_REGIAO",
+                      "expression": "`DS_REGIAO`"
+                    },
+                    {
+                      "name": "sum(valor)",
+                      "expression": "SUM(`valor`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showDescription": true,
+                "showTitle": true,
+                "title": {
+                  "value": "Distribuição de Entidades por Tipo e Região",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Contagem de entidades classificadas como AC Nível 1, AC Nível 2 e AR por região",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "layout": "stack"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "DS_REGIAO",
+                  "axis": {
+                    "hideTitle": true,
+                    "hideLabels": false
+                  },
+                  "displayName": "Região",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(valor)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "axis": {
+                    "hideTitle": true,
+                    "hideLabels": true,
+                    "hideGrid": true
+                  },
+                  "displayName": "Entidades Distintas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo_agregado",
+                  "legend": {
+                    "position": "right",
+                    "hideTitle": true,
+                    "hide": true
+                  },
+                  "displayName": "Tipo de Agregado",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_total_entidades",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Total de Entidades",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Visão geral das entidades credenciadas pelo ITI (\\*AC Raiz)",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_total_ufs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total_ufs)",
+                      "expression": "MEASURE(`total_ufs`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Total de UFs Atendidas",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Visão geral das entidades credenciadas pelo ITI",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total_ufs)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_total_regioes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total_regioes)",
+                      "expression": "MEASURE(`total_regioes`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Total de Regiões",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Visão geral das entidades credenciadas pelo ITI",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total_regioes)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "top_ufs_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_ufs",
+                  "fields": [
+                    {
+                      "name": "SG_UF",
+                      "expression": "`SG_UF`"
+                    },
+                    {
+                      "name": "qtd",
+                      "expression": "`qtd`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Top 10 UFs por Quantidade de Entidades",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Estados com maior número de entidades credenciadas",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "SG_UF",
+                  "axis": {
+                    "hideLabels": false,
+                    "hideTitle": true
+                  },
+                  "displayName": "Estado",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "qtd",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "axis": {
+                    "hideLabels": true,
+                    "hideGrid": true,
+                    "hideTitle": true
+                  },
+                  "displayName": "Quantidade de Entidades",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "SG_UF",
+                  "legend": {
+                    "hide": true,
+                    "hideTitle": true
+                  },
+                  "displayName": "Estado",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 6,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tipo_entidade_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    },
+                    {
+                      "name": "DS_TIPO",
+                      "expression": "`DS_TIPO`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Distribuição por Tipo de Entidade",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Composição dos tipos: AR, AC 1º Nível, AC 2º Nível, AC RAIZ",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "displayName": "Total de Entidades"
+                },
+                "color": {
+                  "fieldName": "DS_TIPO",
+                  "legend": {
+                    "hideTitle": true,
+                    "position": "right"
+                  },
+                  "displayName": "Tipo de Entidade",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "situacao_pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    },
+                    {
+                      "name": "DS_SITUACAO",
+                      "expression": "`DS_SITUACAO`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Situação de Credenciamento",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Status das entidades: CREDENCIADA vs EM CREDENCIAMENTO",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "measure(total)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "axis": {
+                    "hideTitle": true
+                  },
+                  "displayName": "Total de Entidades"
+                },
+                "color": {
+                  "fieldName": "DS_SITUACAO",
+                  "legend": {
+                    "hideTitle": true,
+                    "position": "right"
+                  },
+                  "displayName": "Situação",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 12,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top_agregados_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_agregados",
+                  "fields": [
+                    {
+                      "name": "tipo_agregado",
+                      "expression": "`tipo_agregado`"
+                    },
+                    {
+                      "name": "DS_ENTIDADE",
+                      "expression": "`DS_ENTIDADE`"
+                    },
+                    {
+                      "name": "sum(valor)",
+                      "expression": "SUM(`valor`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Top 10 Entidades com Mais Agregados",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Entidades com maior número total de agregados",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "DS_ENTIDADE",
+                  "axis": {
+                    "hideLabels": false,
+                    "hideTitle": true
+                  },
+                  "displayName": "Entidade",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(valor)",
+                  "axis": {
+                    "hideGrid": true,
+                    "hideLabels": true,
+                    "hideTitle": true
+                  },
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "displayName": "Total de Agregados",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo_agregado",
+                  "legend": {
+                    "hideTitle": true,
+                    "hide": true,
+                    "position": "bottom"
+                  },
+                  "displayName": "Tipo de Agregado",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "natural-order"
+                    }
+                  }
+                },
+                "label": {
+                  "show": false,
+                  "showTotal": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 24,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "evolucao_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "evolucao",
+                  "fields": [
+                    {
+                      "name": "tipo_entidade",
+                      "expression": "`tipo_entidade`"
+                    },
+                    {
+                      "name": "ano",
+                      "expression": "`ano`"
+                    },
+                    {
+                      "name": "sum(qtd)",
+                      "expression": "SUM(`qtd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Evolução de Credenciamento por Ano",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Tendência de credenciamentos ao longo dos anos",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "ano",
+                  "axis": {
+                    "hideLabels": false,
+                    "hideGrid": true,
+                    "hideTitle": true
+                  },
+                  "displayName": "Ano",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(qtd)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  },
+                  "axis": {
+                    "hideGrid": true,
+                    "hideLabels": true,
+                    "hideTitle": true
+                  },
+                  "displayName": "Entidades Credenciadas",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo_entidade",
+                  "legend": {
+                    "hideTitle": true,
+                    "position": "right",
+                    "hide": true
+                  },
+                  "displayName": "Tipo de Entidade",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 24,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "hierarquia_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "hierarquia",
+                  "fields": [
+                    {
+                      "name": "entidade_pai",
+                      "expression": "`entidade_pai`"
+                    },
+                    {
+                      "name": "entidade_filha",
+                      "expression": "`entidade_filha`"
+                    },
+                    {
+                      "name": "tipo_filho",
+                      "expression": "`tipo_filho`"
+                    },
+                    {
+                      "name": "uf_filho",
+                      "expression": "`uf_filho`"
+                    },
+                    {
+                      "name": "situacao_filho",
+                      "expression": "`situacao_filho`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Árvore de Hierarquia de Entidades",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Relação entre entidades pai e filhas na hierarquia do ITI",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "entidade_pai",
+                    "displayName": "Entidade Pai"
+                  },
+                  {
+                    "fieldName": "entidade_filha",
+                    "displayName": "Entidade Filha"
+                  },
+                  {
+                    "fieldName": "tipo_filho",
+                    "displayName": "Tipo"
+                  },
+                  {
+                    "fieldName": "uf_filho",
+                    "displayName": "UF"
+                  },
+                  {
+                    "fieldName": "situacao_filho",
+                    "displayName": "Situação"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 31,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tipo_situacao_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "DS_TIPO",
+                      "expression": "`DS_TIPO`"
+                    },
+                    {
+                      "name": "DS_SITUACAO",
+                      "expression": "`DS_SITUACAO`"
+                    },
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Distribuição por Tipo e Situação",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Cruzamento de tipos de entidade com situação de credenciamento",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "DS_TIPO",
+                    "displayName": "Tipo de Entidade"
+                  },
+                  {
+                    "fieldName": "DS_SITUACAO",
+                    "displayName": "Situação"
+                  },
+                  {
+                    "fieldName": "measure(total)",
+                    "format": {
+                      "type": "number-plain",
+                      "abbreviation": "none",
+                      "decimalPlaces": {
+                        "type": "exact",
+                        "places": 0
+                      },
+                      "hideGroupSeparator": false
+                    },
+                    "displayName": "Total de Entidades"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 39,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ar_regioes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(DS_REGIAO)",
+                      "expression": "COUNT(DISTINCT `DS_REGIAO`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AR')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Regiões com AR",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Regiões do Brasil atendidas por Autoridades Registradoras"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(DS_REGIAO)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 4,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ar_ufs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(SG_UF)",
+                      "expression": "COUNT(DISTINCT `SG_UF`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AR')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "UFs com AR",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Estados atendidos por Autoridades Registradoras"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(SG_UF)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ar_total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AR')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "Total de Entidades AR",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Número de entidades credenciadas como Autoridade Registradora"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac2_total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 2º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "Entidades AC Nível 2",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Número de entidades credenciadas como Autoridade Certificadora de 2º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac1_total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "measure(total)",
+                      "expression": "MEASURE(`total`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 1º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "Entidades AC Nível 1",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Número de entidades credenciadas como Autoridade Certificadora de 1º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "measure(total)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac1_ufs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(SG_UF)",
+                      "expression": "COUNT(DISTINCT `SG_UF`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 1º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "UFs com AC Nível 1",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Estados atendidos por Autoridades Certificadoras de 1º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(SG_UF)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac2_ufs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(SG_UF)",
+                      "expression": "COUNT(DISTINCT `SG_UF`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 2º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "UFs com AC Nível 2",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Estados atendidos por Autoridades Certificadoras de 2º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(SG_UF)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 8,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac2_regioes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(DS_REGIAO)",
+                      "expression": "COUNT(DISTINCT `DS_REGIAO`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 2º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "Regiões com AC Nível 2",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Regiões do Brasil atendidas por Autoridades Certificadoras de 2º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(DS_REGIAO)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 10,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_ac1_regioes",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dim_entidade",
+                  "fields": [
+                    {
+                      "name": "countdistinct(DS_REGIAO)",
+                      "expression": "COUNT(DISTINCT `DS_REGIAO`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`DS_TIPO` IN ('AC 1º NÍVEL')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "Regiões com AC Nível 1",
+                  "fields": []
+                },
+                "description": {
+                  "fields": [],
+                  "value": "Regiões do Brasil atendidas por Autoridades Certificadoras de 1º Nível"
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "countdistinct(DS_REGIAO)",
+                  "rowNumber": 0,
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "none",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 0
+                    },
+                    "hideGroupSeparator": false
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "211ae373",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "regiao",
+            "queries": [
+              {
+                "name": "dashboards/01f1b3e204841948b8a15f1aabd147b9/datasets/01f1b3e23034104eafaacacf1a2db601_DS_REGIAO",
+                "query": {
+                  "datasetName": "agregados_regiao",
+                  "fields": [
+                    {
+                      "name": "DS_REGIAO",
+                      "expression": "`DS_REGIAO`"
+                    },
+                    {
+                      "name": "DS_REGIAO_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "showDescription": false,
+                "title": {
+                  "value": "REGIÃO",
+                  "fields": []
+                }
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "DS_REGIAO",
+                    "queryName": "dashboards/01f1b3e204841948b8a15f1aabd147b9/datasets/01f1b3e23034104eafaacacf1a2db601_DS_REGIAO"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "visualizationColors": [
+        "#1B4F72",
+        "#2874A6",
+        "#3498DB",
+        "#5DADE2",
+        "#85C1E2",
+        "#95A5A6",
+        "#BDC3C7",
+        "#D5DBDB"
+      ],
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  },
+  "variables": [
+    {
+      "name": "NR_AGRE",
+      "displayName": "NR_AGRE",
+      "field": {
+        "options": [
+          {
+            "expression": "MEASURE(`dim_entidade`.`total`)"
+          }
+        ],
+        "isFieldGroup": true
+      }
+    }
+  ]
+}

@@ -3,15 +3,15 @@
 resources:
   pipelines:
     ITI_ICP_BRASIL_etl:
-      name: ITI_ICP_BRASIL_etl
+      name: ITI_ICP_BRASIL
       catalog: ${var.catalog}
       schema: ${var.schema}
       serverless: true
-      root_path: "../src/ITI_ICP_BRASIL_etl"
+      root_path: "../src/ITI_ICP_BRASIL"
 
       libraries:
         - glob:
-            include: ../src/ITI_ICP_BRASIL_etl/transformations/**
+            include: ../src/ITI_ICP_BRASIL/**
 
       environment:
         dependencies:

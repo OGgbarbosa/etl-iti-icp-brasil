@@ -18,6 +18,9 @@ variables:
     description: The catalog to use
   schema:
     description: The schema to use
+  warehouse_id:
+    description: The SQL warehouse to use
+    default: e054bea1d2fa6e66
 
 targets:
   dev:
