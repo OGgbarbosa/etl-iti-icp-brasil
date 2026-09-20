@@ -245,7 +245,7 @@ databricks bundle run
 
 O projeto inclui o painel analítico oficial **Painel de Entidades ITI**, implementado no **Databricks AI/BI Lakeview** e versionado como código declarativo (`resources/dashboards/Painel de Entidades ITI.lvdash.json`) integrado diretamente ao Databricks Asset Bundle (`resources/ITI_ICP_BRASIL_dashboard.yml`).
 
-![Painel de Entidades ITI](docs/dashboards/painel_entidades_iti.png)
+![Painel de Entidades ITI](docs/dashboards/painel_entidades_iti_readme.png)
 
 ### 6.1. Visão Geral dos Indicadores e Métricas (KPIs)
 
