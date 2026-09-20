@@ -81,6 +81,7 @@ etl-iti-icp-brasil/
 ├── src/                                 # Código-fonte principal da aplicação
 │   ├── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
 │   │   ├── __init__.py                  # Inicialização do módulo Python
+│   │   ├── __main__.py                  # Ponto de entrada para execução como módulo (python -m)
 │   │   ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
 │   │   ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
 │   │   ├── assets/                      # Módulo de comunicação e consumo de APIs externas
@@ -169,12 +170,13 @@ O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orques
 Utilizando o script entrypoint registrado no `pyproject.toml`:
 
 ```bash
+# Execução via script entrypoint registrado no pyproject.toml
 uv run main
-```
 
-Ou diretamente pelo interpretador Python:
+# Execução direta como módulo Python
+python -m ITI_ICP_BRASIL
 
-```bash
+# Ou diretamente pelo caminho do script
 uv run python src/ITI_ICP_BRASIL/main.py
 ```
 
