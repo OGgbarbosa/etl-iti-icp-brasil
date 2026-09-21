@@ -1,5 +1,11 @@
 # 🏛️ ETL ITI - ICP-Brasil (Databricks Lakehouse & Asset Bundles)
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Databricks](https://img.shields.io/badge/Databricks-Serverless-FF3621?logo=databricks&logoColor=white)
+![PySpark](https://img.shields.io/badge/PySpark-Connect-E25A1C?logo=apachespark&logoColor=white)
+![Ruff](https://img.shields.io/badge/Linter-Ruff-261230?logo=ruff&logoColor=white)
+![uv](https://img.shields.io/badge/Package_Manager-uv-DE5FE9?logo=astral&logoColor=white)
+
 > ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (*Work in Progress*)**  
 > Pipeline de engenharia de dados voltado à extração, normalização, modelagem dimensional e carga de dados públicos de entidades e certificados digitais da Infraestrutura de Chaves Públicas Brasileira (ICP-Brasil) no Databricks Unity Catalog.
 
@@ -20,7 +26,7 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 │ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                      │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Conversão CSV & Statement Execution API / DLT)
+                                  ▼ (Conversão CSV & Statement Execution API / Databricks Jobs)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
 │ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                    │
@@ -47,8 +53,8 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard)                   │
 │ └── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
-│     ├── 21 Visualizações: KPIs, Rankings, Georreferenciamento e Séries Temporais │
-│     └── 6 Datasets Analíticos conectados diretamente às Tabelas Gold             │
+│     ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                   │
+│     └── Datasets Analíticos conectados diretamente às Tabelas Gold               │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -70,7 +76,7 @@ etl-iti-icp-brasil/
 ├── docs/                                # Documentação técnica e relatórios visuais
 │   └── dashboards/                      # Ativos visuais e relatórios do dashboard
 │       ├── Painel de Entidades ITI.pdf  # Captura oficial em PDF exportada do Databricks
-│       └── painel_entidades_iti.png     # Renderização visual em alta resolução do painel
+│       └── painel_entidades_iti_readme.png # Captura visual do painel incorporada na documentação
 │
 ├── resources/                           # Definições declarativas de recursos no Databricks
 │   ├── dashboards/                      # Especificações de dashboards (Lakeview / AI/BI)
@@ -116,7 +122,7 @@ etl-iti-icp-brasil/
 O projeto utiliza ferramentas de padrões modernos de Engenharia de Dados em Nuvem:
 
 - **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
-- **Motor de Computação Distribuída:** Apache Spark / PySpark & [Delta Live Tables (DLT)](https://docs.databricks.com/delta-live-tables/index.html)
+- **Motor de Computação Distribuída:** Apache Spark / PySpark & [Databricks Workflows](https://docs.databricks.com/workflows/index.html) (Serverless)
 - **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) com computação **Serverless** (`DatabricksSession.builder.serverless(True)`)
 - **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados e Tabelas Delta)
 - **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`)
