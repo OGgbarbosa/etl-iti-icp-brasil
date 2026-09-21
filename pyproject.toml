@@ -1,7 +1,7 @@
 [project]
 name = "ITI_ICP_BRASIL"
 version = "0.0.1"
-authors = [{ name = "gbarbos4@gmail.com" }]
+authors = [{ name = "Gabriel Barbosa" }]
 requires-python = ">=3.10,<3.13"
 dependencies = [
     # Any dependencies for jobs and pipelines in this project can be added here
@@ -33,4 +33,7 @@ ignore = ["N999", "BLE001"]
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["F821"]
-"src/ITI_ICP_BRASIL_etl/transformations/*" = ["F821"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+

@@ -97,18 +97,10 @@ etl-iti-icp-brasil/
 │   │   │   ├── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
 │   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
 │   │   └── config/                      # Configurações gerais e parâmetros de ambiente
-│   │
-│   └── ITI_ICP_BRASIL_etl/              # Template local de pipelines declarativas DLT (ignorado no git)
-│       ├── README.md
-│       └── transformations/             # Scripts de transformação entre as camadas Medalhão
-│           └── .gitkeep
 │
 ├── tests/                               # Suíte de testes automatizados
 │   ├── conftest.py                      # Configurações globais e fixtures do pytest (Spark/Connect)
 │   └── test_package.py                  # Testes unitários do pacote ITI_ICP_BRASIL
-│
-├── fixtures/                            # Conjuntos de dados estáticos para validação e testes
-│   └── .gitkeep
 │
 ├── databricks.yml                       # Configuração declarativa do Databricks Asset Bundle (DAB)
 ├── pyproject.toml                       # Especificação do projeto e gerenciamento de dependências
@@ -156,7 +148,7 @@ uv sync --dev
 Configure as credenciais do Databricks no seu arquivo `~/.databrickscfg` ou utilize o comando da CLI:
 
 ```bash
-databricks auth login --host https://dbc-15e61da2-fb6a.cloud.databricks.com
+databricks auth login --host https://<seu-workspace-id>.cloud.databricks.com
 ```
 
 ---
@@ -297,7 +289,7 @@ O dashboard é gerenciado como código (*Dashboard-as-Code*) através do arquivo
 # Valida a integridade da pipeline e do dashboard
 databricks bundle validate
 
-# Deploy do pipeline DLT e do Dashboard no Databricks
+# Deploy do Workflow Job e do Dashboard no Databricks
 databricks bundle deploy
 ```
 

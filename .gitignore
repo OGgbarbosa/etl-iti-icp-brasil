@@ -42,7 +42,6 @@ ENV/
 databricks.yml.backup
 *.backup
 *.local.yml
-src/ITI_ICP_BRASIL_etl/
 
 # Testing & Linters
 .pytest_cache/
