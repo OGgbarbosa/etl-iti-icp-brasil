@@ -253,6 +253,7 @@ graph LR
 
 - **Isolamento de Falhas:** Caso ocorra instabilidade temporária na API externa do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas).
 - **Eficiência Computacional:** Se houver erro em uma camada posterior (como Silver ou Gold), o Databricks refaz apenas a camada com falha, preservando os dados já processados com sucesso nas camadas antecedentes sem custo redundante de computação.
+- **Agendamento Automático (*Cron Schedule*):** O job é programado para execução diária às **08:00 (Horário de Brasília — `America/Sao_Paulo`)**, operando de forma 100% autônoma no ambiente de Produção.
 
 ---
 

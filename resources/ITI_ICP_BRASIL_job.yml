@@ -2,6 +2,10 @@ resources:
   jobs:
     ITI_ICP_BRASIL_job:
       name: ITI_ICP_BRASIL_job
+      schedule:
+        quartz_cron_expression: "0 0 8 * * ?"
+        timezone_id: "America/Sao_Paulo"
+        pause_status: UNPAUSED
       tasks:
         - task_key: extrair_e_carregar_raw
           environment_key: default
