@@ -20,6 +20,10 @@ dev = [
 
 [project.scripts]
 main = "ITI_ICP_BRASIL.main:main"
+run_raw = "ITI_ICP_BRASIL.pipeline:run_raw"
+run_bronze = "ITI_ICP_BRASIL.pipeline:run_bronze"
+run_silver = "ITI_ICP_BRASIL.pipeline:run_silver"
+run_gold = "ITI_ICP_BRASIL.pipeline:run_gold"
 
 [build-system]
 requires = ["hatchling"]

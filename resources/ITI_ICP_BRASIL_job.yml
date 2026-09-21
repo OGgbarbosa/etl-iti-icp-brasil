@@ -3,11 +3,47 @@ resources:
     ITI_ICP_BRASIL_job:
       name: ITI_ICP_BRASIL_job
       tasks:
-        - task_key: run_pipeline
+        - task_key: extrair_e_carregar_raw
           environment_key: default
+          max_retries: 3
+          min_retry_interval_millis: 10000
+          retry_on_timeout: true
           python_wheel_task:
             package_name: iti_icp_brasil
-            entry_point: main
+            entry_point: run_raw
+
+        - task_key: processar_bronze
+          depends_on:
+            - task_key: extrair_e_carregar_raw
+          environment_key: default
+          max_retries: 2
+          min_retry_interval_millis: 5000
+          retry_on_timeout: true
+          python_wheel_task:
+            package_name: iti_icp_brasil
+            entry_point: run_bronze
+
+        - task_key: processar_silver
+          depends_on:
+            - task_key: processar_bronze
+          environment_key: default
+          max_retries: 2
+          min_retry_interval_millis: 5000
+          retry_on_timeout: true
+          python_wheel_task:
+            package_name: iti_icp_brasil
+            entry_point: run_silver
+
+        - task_key: processar_gold
+          depends_on:
+            - task_key: processar_silver
+          environment_key: default
+          max_retries: 2
+          min_retry_interval_millis: 5000
+          retry_on_timeout: true
+          python_wheel_task:
+            package_name: iti_icp_brasil
+            entry_point: run_gold
       environments:
         - environment_key: default
           spec:

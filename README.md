@@ -157,19 +157,19 @@ databricks auth login --host https://<seu-workspace-id>.cloud.databricks.com
 
 O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orquestrado de forma modular e pode ser executado unificadamente através do ponto de entrada principal do projeto:
 
-### 5.1. Execução Fim a Fim
-
-Utilizando o script entrypoint registrado no `pyproject.toml`:
+### 5.1. Execução Fim a Fim e Modular
 
 ```bash
-# Execução via script entrypoint registrado no pyproject.toml
+# Execução da esteira completa de ponta a ponta
 uv run main
-
-# Execução direta como módulo Python
+# ou
 python -m ITI_ICP_BRASIL
 
-# Ou diretamente pelo caminho do script
-uv run python src/ITI_ICP_BRASIL/main.py
+# Execução direcionada de etapas individuais (scripts registrados no pyproject.toml)
+uv run run_raw      # Apenas extração da API ITI e carga no Volume Raw
+uv run run_bronze   # Apenas conversão para CSV e tabela Delta Bronze
+uv run run_silver   # Apenas padronização e tabelas Delta Silver via PySpark Serverless
+uv run run_gold     # Apenas dimensões e fatos Gold via SQL Warehouse
 ```
 
 ### 5.2. Etapas Executadas pela Pipeline Modular
@@ -232,6 +232,20 @@ databricks bundle deploy --target prod
 # Execução do Workflow Job gerenciado no Databricks (Serverless)
 databricks bundle run ITI_ICP_BRASIL_job
 ```
+
+#### 5.5.1. Arquitetura da DAG de Tarefas no Databricks Workflows
+
+O job gerenciado no Databricks opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência:
+
+```mermaid
+graph LR
+    A["1. extrair_e_carregar_raw<br/>(retry: 3x | int: 10s)"] --> B["2. processar_bronze<br/>(retry: 2x | int: 5s)"]
+    B --> C["3. processar_silver<br/>(retry: 2x | int: 5s)"]
+    C --> D["4. processar_gold<br/>(retry: 2x | int: 5s)"]
+```
+
+- **Isolamento de Falhas:** Caso ocorra instabilidade temporária na API externa do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas).
+- **Eficiência Computacional:** Se houver erro em uma camada posterior (como Silver ou Gold), o Databricks refaz apenas a camada com falha, preservando os dados já processados com sucesso nas camadas antecedentes sem custo redundante de computação.
 
 ---
 
