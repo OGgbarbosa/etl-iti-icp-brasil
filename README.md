@@ -255,34 +255,7 @@ O projeto inclui o painel analítico oficial **Painel de Entidades ITI**, implem
 
 ![Painel de Entidades ITI](docs/dashboards/painel_entidades_iti_readme.png)
 
-### 6.1. Visão Geral dos Indicadores e Métricas (KPIs)
-
-O painel consolida mais de 2.100 entidades ativas e em credenciamento em todo o território nacional, agrupadas nas seguintes camadas de decisão:
-
-| Bloco de Indicadores | Métrica Principal | Valor Consolidado | Dimensões de Apoio |
-| :--- | :--- | :---: | :--- |
-| **Visão Geral** | Total de Entidades | **2.158** | 27 UFs Atendidas / 5 Regiões do Brasil |
-| **Autoridades Certificadoras (AC 1º Nível)** | Entidades AC Nível 1 | **20** | 5 UFs / 3 Regiões |
-| **Autoridades Certificadoras (AC 2º Nível)** | Entidades AC Nível 2 | **106** | 13 UFs / 4 Regiões |
-| **Autoridades de Registro (AR)** | Total de Entidades AR | **2.031** | 27 UFs / 5 Regiões |
-
-### 6.2. Gráficos Analíticos e Visualizações
-
-1. **Distribuição Geográfica por Região & Top 10 UFs:**
-   - Gráficos de barras destacando a predominância da Região Sudeste e os estados com maior número de entidades credenciadas (SP, MG, SC, RS, RJ, PR, GO, DF, BA, MT).
-2. **Composição por Tipo e Situação:**
-   - Gráficos de rosca (*donut charts*) exibindo a proporção entre tipos (AR, AC 2º Nível, AC 1º Nível e AC Raiz) e o status cadastral (*CREDENCIADA* vs *EM CREDENCIAMENTO*).
-3. **Distribuição de Entidades por Tipo e Região:**
-   - Gráfico de barras agrupadas comparando a presença de AC Nível 1, AC Nível 2 e AR por macrorregião brasileira.
-4. **Top 10 Entidades com Mais Agregados:**
-   - Gráfico de barras empilhadas identificando os maiores nós da cadeia de confiança ICP-Brasil (e.g., AC Raiz, AC RFB, AC JUS, AC SAFEWEB, AC SOLUTI, etc.).
-5. **Evolução de Credenciamento por Ano:**
-   - Gráfico de linhas com série temporal histórica (de 2002 a 2026) demonstrando os picos de expansão e o ciclo de maturação do ecossistema de certificação digital.
-6. **Grids Analíticos de Detalhamento:**
-   - **Árvore de Hierarquia de Entidades:** Tabela relacional com paginação dinâmica permitindo rastrear a relação completa entre `Entidade Pai` ➔ `Entidade Filha`, com tipo, UF e situação.
-   - **Distribuição por Tipo e Situação:** Matriz cruzada consolidando o volume exato de entidades por modalidade e estado operacional.
-
-### 6.3. Datasets e Rastreabilidade com as Tabelas Gold
+### 6.1. Datasets e Rastreabilidade com as Tabelas Gold
 
 O dashboard consome diretamente a modelagem dimensional criada na Camada 3_gold do Lakehouse:
 
@@ -295,7 +268,7 @@ O dashboard consome diretamente a modelagem dimensional criada na Camada 3_gold 
 | `agregados_regiao` | `lakehouse_iti.3_gold.dim_entidade` | Distribuição categórica cruzada por macrorregião geográfica. |
 | `hierarquia` | `lakehouse_iti.3_gold.dim_hierarquia` + `dim_entidade` | Self-join relacional entre ancestrais e subordinados diretos. |
 
-### 6.4. Deploy Declarativo do Dashboard via Databricks Asset Bundle (DAB)
+### 6.2. Deploy Declarativo do Dashboard via Databricks Asset Bundle (DAB)
 
 O dashboard é gerenciado como código (*Dashboard-as-Code*) através do arquivo declarativo [`resources/ITI_ICP_BRASIL_dashboard.yml`](resources/ITI_ICP_BRASIL_dashboard.yml). Ao executar o deploy do bundle, o dashboard é provisionado e vinculado automaticamente ao SQL Warehouse do workspace:
 
