@@ -7,7 +7,8 @@
 ![uv](https://img.shields.io/badge/Package_Manager-uv-DE5FE9?logo=astral&logoColor=white)
 
 > ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (*Work in Progress*)**  
-> Pipeline de engenharia de dados voltado à extração, normalização, modelagem dimensional e carga de dados públicos de entidades e certificados digitais da Infraestrutura de Chaves Públicas Brasileira (ICP-Brasil) no Databricks Unity Catalog.
+> - **Fase 1 (Concluída):** Esteira de dados cadastrais e mestres das entidades ICP-Brasil (Extração, Normalização, PySpark Serverless, Modelagem Dimensional e AI/BI Dashboard).  
+> - **Fase 2 (Em Planejamento):** Ingestão e ETL de dados estatísticos do portal **ITI em Números** (volumetria agregada de emissões por UF, período e tipo), possibilitando cruzamentos com a infraestrutura credenciada e análises conversacionais via **Databricks Genie**.
 
 ---
 
@@ -302,4 +303,25 @@ uv run ruff check .
 # Aplicação de correções e formatação automática
 uv run ruff format .
 ```
+
+---
+
+## 8. 🗺️ Roadmap de Evolução: Integração com "ITI em Números" & Databricks Genie
+
+A esteira implementada na **Fase 1** consolida a **base cadastral e dimensional (Master Data)** de todas as autoridades certificadoras e de registro da ICP-Brasil, com rastreabilidade da árvore hierárquica e distribuição geográfica.
+
+A **Fase 2** do projeto expandirá o ecossistema analítico com as seguintes frentes:
+
+1. **Ingestão de Dados Estatísticos Dinâmicos (*ITI em Números*):**
+   - Nova esteira de ETL para ingestão das séries temporais e volumétricas de emissões de certificados digitais no território nacional (agrupadas por UF, macrorregião, ano/mês e modalidades como e-CPF, e-CNPJ, NF-e, A1, A3, etc.).
+   - *Nota de Governança:* Em conformidade com as diretrizes concorrenciais e estratégicas do ITI, os dados de emissão disponibilizados são estatísticos e agregados territorialmente, preservando o sigilo comercial das emissões individuais por AC/AR específica.
+
+2. **Correlação de Oferta Instalada vs. Demanda de Mercado:**
+   - Cruzamento das séries de emissão com a `dim_entidade`, possibilitando métricas comparativas como:
+     - Densidade de autoridades credenciadas vs. volume demandado de certificados por estado.
+     - Identificação de regiões com alta demanda e potencial desassistência de pontos de atendimento (ARs).
+
+3. **Analytics Conversacional com Databricks Genie (AI/BI):**
+   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog, habilitando que analistas realizem levantamentos estatísticos, análises exploratórias e geração de insights através de linguagem natural (e.g., *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*).
+
 
