@@ -38,7 +38,7 @@ jobs:
         run: uv run pytest
 
   deploy:
-    name: Validar Deploy Databricks (Produção)
+    name: Deploy Databricks (Produção)
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -61,4 +61,11 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
           databricks bundle validate --target prod
-          echo "Conexão com Databricks validada com sucesso!"
+
+      - name: Deploy Databricks (Produção)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks bundle deploy --target prod
+          echo "Deploy no Databricks (Prod) concluído com sucesso!"
