@@ -15,3 +15,32 @@ def flatten(d, parent=''):
         else:
             items[novo] = v
     return items
+
+def flatten_num(dados): 
+    registros = []
+    for item in dados:
+        indicador = next(iter(item))
+        valor = item[indicador]
+
+        if not isinstance(valor, list):
+            registros.append({
+                "indicador": indicador,
+                "indice": None,
+                "valor": valor
+            })
+        else:
+            for indice, elemento in enumerate(valor):
+                if not isinstance(elemento, dict):
+                    registros.append({
+                        "indicador": indicador,
+                        "indice": indice,
+                        "valor": elemento
+                    })
+                else:
+                    registro = {
+                        "indicador": indicador,
+                        "indice": indice
+                    }
+                    registro.update(elemento)
+                    registros.append(registro)
+    return registros

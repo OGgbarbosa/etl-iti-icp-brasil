@@ -48,6 +48,7 @@ databricks.yml.backup
 .ruff_cache/
 .coverage
 htmlcov/
+tests/teste_num.py
 
 *.txt
 *.json
