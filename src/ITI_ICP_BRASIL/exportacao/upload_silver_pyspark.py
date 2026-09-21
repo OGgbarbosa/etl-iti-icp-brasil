@@ -1,11 +1,26 @@
-from databricks.connect import DatabricksSession
+from contextlib import suppress
+
+from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import IntegerType, LongType
 
 
 def obter_spark():
-    try:
+    # 1. Sessão ativa nativa (quando executando dentro de um Job/Cluster no Databricks)
+    with suppress(Exception):
+        spark = SparkSession.getActiveSession()
+        if spark is not None:
+            return spark
+
+    # 2. Databricks Connect Serverless (quando executando remotamente do ambiente local)
+    with suppress(Exception):
+        from databricks.connect import DatabricksSession
+
         return DatabricksSession.builder.serverless(True).getOrCreate()
+
+    # 3. Fallback SparkSession padrão
+    try:
+        return SparkSession.builder.getOrCreate()
     except Exception as e:
         print(f"❌ Falha ao inicializar sessao Spark: {e}")
         return None

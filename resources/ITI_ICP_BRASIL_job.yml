@@ -1,0 +1,16 @@
+resources:
+  jobs:
+    ITI_ICP_BRASIL_job:
+      name: ITI_ICP_BRASIL_job
+      tasks:
+        - task_key: run_pipeline
+          environment_key: default
+          python_wheel_task:
+            package_name: iti_icp_brasil
+            entry_point: main
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl

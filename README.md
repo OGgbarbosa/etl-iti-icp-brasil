@@ -76,7 +76,7 @@ etl-iti-icp-brasil/
 │   ├── dashboards/                      # Especificações de dashboards (Lakeview / AI/BI)
 │   │   └── Painel de Entidades ITI.lvdash.json # Definição declarativa do dashboard
 │   ├── ITI_ICP_BRASIL_dashboard.yml     # Declaração do Dashboard AI/BI no Asset Bundle
-│   └── ITI_ICP_BRASIL_etl.pipeline.yml  # Pipeline declarativa Delta Live Tables (DLT)
+│   └── ITI_ICP_BRASIL_job.yml           # Definição do Databricks Workflow Job (Serverless ETL)
 │
 ├── src/                                 # Código-fonte principal da aplicação
 │   ├── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
@@ -237,8 +237,8 @@ databricks bundle deploy
 # Deploy em ambiente de produção (prod)
 databricks bundle deploy --target prod
 
-# Execução da pipeline declarativa no workspace Databricks
-databricks bundle run
+# Execução do Workflow Job gerenciado no Databricks (Serverless)
+databricks bundle run ITI_ICP_BRASIL_job
 ```
 
 ---
