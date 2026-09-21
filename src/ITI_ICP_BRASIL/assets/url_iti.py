@@ -10,11 +10,19 @@ def obter_entidade():
 
     dados = response.json()
 
-    return [flatten(item) for item in dados['entidades']]
+    try:
+        return [flatten(item) for item in dados['entidades']]
+    except Exception as e:
+        print(f"Erro: {e}")
+        return []
 
 def obter_dados_num():
     response = requests.get(URL_NUMEROS, timeout=30)
     response.raise_for_status()
     dados = response.json()
 
-    return flatten_num(dados)
+    try:
+        return flatten_num(dados)
+    except Exception as e:
+        print(f"Erro: {e}")
+        return []
