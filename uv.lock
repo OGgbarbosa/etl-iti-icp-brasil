@@ -507,7 +507,9 @@ name = "iti-icp-brasil"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
+    { name = "databricks-sdk" },
     { name = "python-dotenv" },
+    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -520,7 +522,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "python-dotenv", specifier = ">=1.2.3" }]
+requires-dist = [
+    { name = "databricks-sdk", specifier = ">=0.20.0" },
+    { name = "python-dotenv", specifier = ">=1.2.3" },
+    { name = "requests", specifier = ">=2.31.0" },
+]
 
 [package.metadata.requires-dev]
 dev = [
