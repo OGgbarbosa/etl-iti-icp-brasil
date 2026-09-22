@@ -1,13 +1,18 @@
 from ITI_ICP_BRASIL.exportacao.upload_bronze import (
-    upload_tabela_bronze,
-    upload_volume_bronze,
+    upload_tabela_bronze_iti_entidades,
+    upload_tabela_bronze_iti_numeros,
+    upload_volume_bronze_iti_entidades,
+    upload_volume_bronze_iti_numeros,
 )
 from ITI_ICP_BRASIL.exportacao.upload_gold import (
     upload_gold_entidades,
     upload_gold_hierarquia,
     upload_gold_metricas_entidades,
 )
-from ITI_ICP_BRASIL.exportacao.upload_raw import upload_volume_iti_entidades, upload_volume_iti_numeros
+from ITI_ICP_BRASIL.exportacao.upload_raw import (
+    upload_volume_iti_entidades,
+    upload_volume_iti_numeros,
+)
 from ITI_ICP_BRASIL.exportacao.upload_silver_pyspark import (
     upload_silver_enderecos,
     upload_silver_entidades,
@@ -16,15 +21,17 @@ from ITI_ICP_BRASIL.exportacao.upload_silver_pyspark import (
 
 
 def run_raw() -> None:
-    """Extrai entidades da API pública do ITI e salva no Volume Raw."""
+    """Extrai entidades e números da API pública do ITI e salva no Volume Raw."""
     upload_volume_iti_entidades()
     upload_volume_iti_numeros()
 
 
 def run_bronze() -> None:
-    """Converte os dados brutos para CSV e carrega a tabela Delta Bronze."""
-    upload_volume_bronze()
-    upload_tabela_bronze()
+    """Converte os dados brutos para CSV e carrega as tabelas Delta Bronze."""
+    upload_volume_bronze_iti_entidades()
+    upload_volume_bronze_iti_numeros()
+    upload_tabela_bronze_iti_entidades()
+    upload_tabela_bronze_iti_numeros()
 
 
 def run_silver() -> None:

@@ -1,3 +1,12 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# SQL Warehouse
+warehouse_id = os.getenv("DATABRICKS_WAREHOUSE_ID") or os.getenv("WAREHOUSE_ID")
+
 # Assets
 URL_ENTIDADES = "https://estrutura.iti.gov.br/assets/jsons/details.json"
 URL_NUMEROS = "https://numeros.iti.gov.br/assets/paneljson/panels.json"
