@@ -17,7 +17,8 @@ from ITI_ICP_BRASIL.exportacao.upload_silver_pyspark import (
 
 def run_raw() -> None:
     """Extrai entidades da API pública do ITI e salva no Volume Raw."""
-    upload_para_volume()
+    upload_volume_iti_entidades()
+    upload_volume_iti_numeros()
 
 
 def run_bronze() -> None:
