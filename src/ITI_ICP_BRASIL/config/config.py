@@ -1,11 +1,42 @@
 import os
+from contextlib import suppress
+from typing import Any
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def obter_warehouse_id(w: Any = None) -> str | None:
+    """Retorna o ID do SQL Warehouse configurado via env, widgets ou busca no workspace."""
+    # 1. Variável de ambiente (configurada via .env local ou ambiente do cluster)
+    wh_id = os.getenv("DATABRICKS_WAREHOUSE_ID") or os.getenv("WAREHOUSE_ID")
+    if wh_id:
+        return wh_id
+
+    # 2. Widgets do Databricks Jobs (quando executando via Workflow Job com parâmetros)
+    with suppress(Exception):
+        from databricks.sdk.runtime import dbutils
+
+        wh_id = dbutils.widgets.get("warehouse_id")
+        if wh_id:
+            return wh_id
+
+    # 3. Fallback dinâmico: busca o primeiro SQL Warehouse disponível no workspace
+    with suppress(Exception):
+        if w is None:
+            from databricks.sdk import WorkspaceClient
+
+            w = WorkspaceClient()
+        warehouses = list(w.warehouses.list())
+        if warehouses:
+            return warehouses[0].id
+
+    return None
+
+
 # SQL Warehouse
-warehouse_id = os.getenv("DATABRICKS_WAREHOUSE_ID") or os.getenv("WAREHOUSE_ID")
+warehouse_id = obter_warehouse_id()
 
 # Assets
 URL_ENTIDADES = "https://estrutura.iti.gov.br/assets/jsons/details.json"

@@ -12,6 +12,7 @@ from ITI_ICP_BRASIL.config.config import (
     caminho_raw_entidades,
     caminho_raw_numeros,
     nome_volume_raw,
+    obter_warehouse_id,
     tabela_destino_entidades,
     tabela_destino_numeros,
     warehouse_id,
@@ -95,9 +96,10 @@ def upload_tabela_bronze_iti_entidades():
     try:
         logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino)
 
-        if not warehouse_id:
-            logger.error("❌ Nenhum SQL Warehouse configurado.")
-            raise RuntimeError("Nenhum SQL Warehouse configurado.")
+        target_warehouse_id = warehouse_id or obter_warehouse_id(w)
+        if not target_warehouse_id:
+            logger.error("❌ Nenhum SQL Warehouse configurado ou disponível no workspace.")
+            raise RuntimeError("Nenhum SQL Warehouse configurado ou disponível no workspace.")
 
         sql_statement = f"""
         CREATE OR REPLACE TABLE {tabela_destino} AS
@@ -115,7 +117,7 @@ def upload_tabela_bronze_iti_entidades():
 
         try:
             resposta = w.statement_execution.execute_statement(
-                warehouse_id=warehouse_id,
+                warehouse_id=target_warehouse_id,
                 statement=sql_statement,
                 wait_timeout="50s",
             )
@@ -209,9 +211,10 @@ def upload_tabela_bronze_iti_numeros():
     try:
         logger.info("🔄️ Criando/atualizando tabela Delta: %s.", tabela_destino)
 
-        if not warehouse_id:
-            logger.error("❌ Nenhum SQL Warehouse configurado.")
-            raise RuntimeError("Nenhum SQL Warehouse configurado.")
+        target_warehouse_id = warehouse_id or obter_warehouse_id(w)
+        if not target_warehouse_id:
+            logger.error("❌ Nenhum SQL Warehouse configurado ou disponível no workspace.")
+            raise RuntimeError("Nenhum SQL Warehouse configurado ou disponível no workspace.")
 
         sql_statement = f"""
         CREATE OR REPLACE TABLE {tabela_destino} AS
@@ -229,7 +232,7 @@ def upload_tabela_bronze_iti_numeros():
 
         try:
             resposta = w.statement_execution.execute_statement(
-                warehouse_id=warehouse_id,
+                warehouse_id=target_warehouse_id,
                 statement=sql_statement,
                 wait_timeout="50s",
             )

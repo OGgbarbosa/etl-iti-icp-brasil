@@ -2,6 +2,9 @@ resources:
   jobs:
     ITI_ICP_BRASIL_job:
       name: ITI_ICP_BRASIL_job
+      parameters:
+        - name: warehouse_id
+          default: ${var.warehouse_id}
       schedule:
         quartz_cron_expression: "0 0 8 * * ?"
         timezone_id: "America/Sao_Paulo"

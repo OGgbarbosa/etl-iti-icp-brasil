@@ -23,6 +23,10 @@ def test_config_warehouse_id_fallback_none(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.delenv("DATABRICKS_WAREHOUSE_ID", raising=False)
     monkeypatch.delenv("WAREHOUSE_ID", raising=False)
     monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        "databricks.sdk.WorkspaceClient",
+        lambda *args, **kwargs: (_ for _ in ()).throw(Exception("No auth")),
+    )
     importlib.reload(config_module)
     assert config_module.warehouse_id is None
 
