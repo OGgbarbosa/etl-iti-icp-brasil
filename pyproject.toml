@@ -7,6 +7,8 @@ dependencies = [
     # Any dependencies for jobs and pipelines in this project can be added here
     # See also https://docs.databricks.com/dev-tools/bundles/library-dependencies
     "python-dotenv>=1.2.3",
+    "requests>=2.31.0",
+    "databricks-sdk>=0.20.0",
 ]
 
 [dependency-groups]
