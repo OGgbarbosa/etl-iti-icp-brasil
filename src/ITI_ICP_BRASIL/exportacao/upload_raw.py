@@ -1,6 +1,5 @@
 import io
 import json
-import logging
 
 from databricks.sdk import WorkspaceClient
 
@@ -9,8 +8,9 @@ from ITI_ICP_BRASIL.config.config import (
     volume_raw_entidades,
     volume_raw_numeros,
 )
+from ITI_ICP_BRASIL.config.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def upload_volume_iti_entidades():
@@ -58,7 +58,7 @@ def upload_volume_iti_numeros():
     try:
         w = WorkspaceClient()
     except Exception as e:
-        logger.error(f"🟥 Erro ao conectar ao Databricks: {e}")
+        logger.error("🟥 Erro ao conectar ao Databricks: %s", e)
         raise
 
     caminho_volume_iti_numeros = volume_raw_numeros
@@ -67,7 +67,7 @@ def upload_volume_iti_numeros():
     try:
         dados = obter_dados_num()
     except Exception as e:
-        logger.error(f"🟥 Erro ao obter dados da API: {e}")
+        logger.error("🟥 Erro ao obter dados da API: %s", e)
         raise
 
     logger.info("Total de registros obtidos: %d.", len(dados))
@@ -86,9 +86,10 @@ def upload_volume_iti_numeros():
         )
         logger.info("✅ Dados salvos no Volume do Databricks com sucesso!")
     except Exception as e:
-        logger.error(f"🟥 Erro ao fazer upload para o Volume: {e}")
+        logger.error("🟥 Erro ao fazer upload para o Volume: %s", e)
         raise
-    
+
+
 if __name__ == "__main__":
-    upload_volume_iti_entidades ()
+    upload_volume_iti_entidades()
     upload_volume_iti_numeros()
