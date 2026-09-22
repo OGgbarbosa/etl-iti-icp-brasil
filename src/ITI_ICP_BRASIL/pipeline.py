@@ -7,7 +7,7 @@ from ITI_ICP_BRASIL.exportacao.upload_gold import (
     upload_gold_hierarquia,
     upload_gold_metricas_entidades,
 )
-from ITI_ICP_BRASIL.exportacao.upload_raw import upload_para_volume
+from ITI_ICP_BRASIL.exportacao.upload_raw import upload_volume_iti_entidades, upload_volume_iti_numeros
 from ITI_ICP_BRASIL.exportacao.upload_silver_pyspark import (
     upload_silver_enderecos,
     upload_silver_entidades,
