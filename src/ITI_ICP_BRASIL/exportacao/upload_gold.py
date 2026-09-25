@@ -1,16 +1,19 @@
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound
 
+from ITI_ICP_BRASIL.config.config import obter_warehouse_id, warehouse_id
+from ITI_ICP_BRASIL.config.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def garantir_schema_gold():
     w = WorkspaceClient()
 
-    # Busca o primeiro SQL Warehouse disponível
-    warehouses = list(w.warehouses.list())
-    if not warehouses:
-        print("⚠️ Nenhum SQL Warehouse encontrado para criar a tabela automaticamente via SQL.")
-        return None, None
-    warehouse_id = warehouses[0].id
+    target_warehouse_id = warehouse_id or obter_warehouse_id(w)
+    if not target_warehouse_id:
+        logger.error("❌ Nenhum SQL Warehouse configurado ou disponível no workspace.")
+        raise RuntimeError("Nenhum SQL Warehouse configurado ou disponível no workspace.")
 
     # Garante que o schema 3_gold existe
     try:
@@ -22,10 +25,10 @@ def garantir_schema_gold():
             catalog_name="lakehouse_iti"
         )
         print("✅ Schema 'lakehouse_iti.3_gold' criado com sucesso!")
-        return w, warehouse_id
+        return w, target_warehouse_id
     else:
         print("✅ Schema 'lakehouse_iti.3_gold' já existe!")
-        return w, warehouse_id
+        return w, target_warehouse_id
 
 def upload_gold_entidades():
     w, warehouse_id = garantir_schema_gold()
@@ -170,3 +173,9 @@ def upload_gold_metricas_entidades():
         return
 
     print("✅ Tabela Gold 'lakehouse_iti.3_gold.fato_metricas_entidades' criada com sucesso!")
+
+
+if __name__ == '__main__':
+    upload_gold_entidades()
+    upload_gold_hierarquia()
+    upload_gold_metricas_entidades()
