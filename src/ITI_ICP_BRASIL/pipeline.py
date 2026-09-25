@@ -13,10 +13,13 @@ from ITI_ICP_BRASIL.exportacao.upload_raw import (
     upload_volume_iti_entidades,
     upload_volume_iti_numeros,
 )
-from ITI_ICP_BRASIL.exportacao.upload_silver_pyspark import (
+from ITI_ICP_BRASIL.exportacao.upload_silver import (
+    create_tabela_silver_numeros,
+    merge_tabela_silver_numeros,
     upload_silver_enderecos,
     upload_silver_entidades,
     upload_silver_hierarquia,
+    upload_staging_silver_numeros,
 )
 
 
@@ -35,10 +38,13 @@ def run_bronze() -> None:
 
 
 def run_silver() -> None:
-    """Processa e padroniza as tabelas Silver (entidades, endereços e hierarquia)."""
+    """Processa e padroniza as tabelas Silver (entidades, endereços, hierarquia e números)."""
     upload_silver_entidades()
     upload_silver_enderecos()
     upload_silver_hierarquia()
+    create_tabela_silver_numeros()
+    upload_staging_silver_numeros()
+    merge_tabela_silver_numeros()
 
 
 def run_gold() -> None:

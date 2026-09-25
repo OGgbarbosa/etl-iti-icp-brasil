@@ -101,7 +101,7 @@ etl-iti-icp-brasil/
 │   │   │   ├── __init__.py
 │   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
 │   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
-│   │   │   ├── upload_silver_pyspark.py # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
+│   │   │   ├── upload_silver.py         # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
 │   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
 │   │   └── config/                      # Configurações gerais e parâmetros de ambiente
 │
