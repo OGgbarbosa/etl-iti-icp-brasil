@@ -32,7 +32,7 @@ def upload_volume_iti_entidades():
         raise
 
     logger.info("Total de registros obtidos: %d.", len(dados))
-    logger.info("Fazendo upload para o Volume Databricks: %s", caminho_volume_iti_entidades)
+    logger.info("⬆️  Fazendo upload para o Volume Databricks: %s", caminho_volume_iti_entidades)
 
     # Converte o JSON em bytes
     try:
@@ -71,7 +71,7 @@ def upload_volume_iti_numeros():
         raise
 
     logger.info("Total de registros obtidos: %d.", len(dados))
-    logger.info("Fazendo upload para o Volume Databricks: %s", caminho_volume_iti_numeros)
+    logger.info("⬆️  Fazendo upload para o Volume Databricks: %s", caminho_volume_iti_numeros)
     try:
         conteudo_bytes = json.dumps(dados, ensure_ascii=False, indent=2).encode("utf-8")
     except Exception as e:
