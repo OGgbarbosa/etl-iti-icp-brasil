@@ -6,56 +6,68 @@
 ![Ruff](https://img.shields.io/badge/Linter-Ruff-261230?logo=ruff&logoColor=white)
 ![uv](https://img.shields.io/badge/Package_Manager-uv-DE5FE9?logo=astral&logoColor=white)
 
-> ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (*Work in Progress*)**  
+> 🚀 **Status do Projeto:** ✅ **Fases 1 e 2 Concluídas e Integradas no Lakehouse**  
 > - **Fase 1 (Concluída):** Esteira de dados cadastrais e mestres das entidades ICP-Brasil (Extração, Normalização, PySpark Serverless, Modelagem Dimensional e AI/BI Dashboard).  
-> - **Fase 2 (Em Planejamento):** Ingestão e ETL de dados estatísticos do portal **ITI em Números** (volumetria agregada de emissões por UF, período e tipo), possibilitando cruzamentos com a infraestrutura credenciada e análises conversacionais via **Databricks Genie**.
+> - **Fase 2 (Concluída):** Ingestão e ETL analítico do portal **ITI em Números** (volumetria agregada de emissões por UF, período, modalidade e credenciamento), com staging, merge idempotente na Silver (`tbl_silver_numeros`) e 5 tabelas analíticas Gold otimizadas via *Liquid Clustering*.  
+> - **Fase 3 (Em Andamento):** Analytics conversacional via **Databricks Genie** e expansão dos painéis analíticos com cruzamento de infraestrutura instalada vs. demanda de mercado.
 
 ---
 
 ## 1. 📌 Introdução e Visão Geral da Arquitetura
 
-O presente projeto tem por finalidade realizar a extração automatizada, o processamento e a disponibilização analítica dos dados abertos governamentais disponibilizados pelo **Instituto Nacional de Tecnologia da Informação (ITI)**. O fluxo abrange entidades certificadoras (Autoridades Certificadoras — ACs, Autoridades de Registro — ARs, Autoridades de Carimbo do Tempo — ACTs e Prestadores de Serviço de Suporte — PSS).
+O presente projeto realiza a extração automatizada, o processamento e a disponibilização analítica dos dados abertos governamentais disponibilizados pelo **Instituto Nacional de Tecnologia da Informação (ITI)**. O fluxo integra tanto o cadastro das entidades certificadoras da ICP-Brasil (ACs, ARs, ACTs, PSS, etc.) quanto as estatísticas consolidadas de emissões de certificados digitais no território nacional (**ITI em Números**).
 
-A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**, garantindo rastreabilidade, governança via **Unity Catalog** e qualidade em cada camada de processamento:
+A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**, garantindo rastreabilidade, governança via **Unity Catalog**, resiliência computacional e alta performance de consulta:
 
 ```text
-                  [ API Oficial do ITI / ICP-Brasil ]
+                  [ APIs Oficiais do ITI / ICP-Brasil ]
+                    ├── API de Entidades Credenciadas
+                    └── API do Painel ITI em Números
                                   │
                                   ▼ (Módulo de Extração & Flatten)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada 0_raw (Volumes do Unity Catalog)                                          │
-│ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                      │
+│ ├── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                      │
+│ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/numeros.json                        │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
                                   ▼ (Conversão CSV & Statement Execution API / Databricks Jobs)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
+│ Camada 1_bronze (Volumes & Tabelas Delta Brutas)                                 │
 │ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/entidades.csv                    │
-│ └── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
+│ ├── Volume: /Volumes/lakehouse_iti/1_bronze/raw/numeros.csv                      │
+│ ├── Tabela Delta: lakehouse_iti.1_bronze.entidades (metadados e auditoria)        │
+│ └── Tabela Delta: lakehouse_iti.1_bronze.numeros (indicadores e séries brutas)   │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Transformações, Deduplicação & PySpark Serverless)
+                                  ▼ (Transformações, Deduplicação, PySpark & MERGE com Hash SHA2)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 2_silver (Tabelas Delta Normalizadas & Enriquecidas)                      │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_entidades                           │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos (com região e end. compl.)│
-│ └── Tabela Delta: lakehouse_iti.2_silver.tbl_hierarquia                          │
+│ Camada 2_silver (Tabelas Delta Normalizadas, Tipadas & Enriquecidas)             │
+│ ├── Entidades:   lakehouse_iti.2_silver.tbl_entidades (CNPJs formatados e situac)│
+│ ├── Endereços:   lakehouse_iti.2_silver.tbl_enderecos (região e end. consolidado)│
+│ ├── Hierarquia:  lakehouse_iti.2_silver.tbl_hierarquia (relações pai/filho)      │
+│ ├── Staging Núm: lakehouse_iti.2_silver.stg_silver_numeros (flags e glossário)   │
+│ └── Fato Números:lakehouse_iti.2_silver.tbl_silver_numeros (MERGE idempotente)   │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Modelagem Dimensional & Visões Analíticas)
+                                  ▼ (Modelagem Dimensional, Liquid Clustering & CTEs Recursivas)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 3_gold (Tabelas Delta Dimensionais & Fatos de Consumo)                    │
-│ ├── Dimensão: lakehouse_iti.3_gold.dim_entidade (enriquecida com região e audit.)│
-│ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia (árvore de subordinação)       │
-│ └── Fato:     lakehouse_iti.3_gold.fato_metricas_entidades (métricas da cadeia)  │
+│ Camada 3_gold (Tabelas Delta de Consumo & Visões Analíticas Otimizadas)          │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade (visão 360º de autoridades)   │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia (subordinação direta)       │
+│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE recursiva)    │
+│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal (CLUSTER BY Ano, Tipo) │
+│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica (CLUSTER UF)  │
+│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados (A1/A3, PF) │
+│ ├── Fato Infra:  lakehouse_iti.3_gold.fato_infraestrutura_credenciamento         │
+│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo (Metas e Comps)       │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                   │
-                                  ▼ (Visualização Analítica & Tomada de Decisão)
+                                  ▼ (Consumo Analítico, Visualização & IA)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard)                   │
-│ └── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
-│     ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                   │
-│     └── Datasets Analíticos conectados diretamente às Tabelas Gold               │
+│ Camada de BI & Analytics (Databricks AI/BI & Genie Conversational Space)         │
+│ ├── Painel: Painel de Entidades ITI (Lakeview Dashboard versionado como código)  │
+│ └── Genie:  Espaço Semântico Conversacional (consultas analíticas em linguagem NL)│
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,35 +91,40 @@ etl-iti-icp-brasil/
 │       ├── Painel de Entidades ITI.pdf  # Captura oficial em PDF exportada do Databricks
 │       └── painel_entidades_iti_readme.png # Captura visual do painel incorporada na documentação
 │
-├── resources/                           # Definições declarativas de recursos no Databricks
+├── resources/                           # Definições declarativas de recursos no Databricks (DABs)
 │   ├── dashboards/                      # Especificações de dashboards (Lakeview / AI/BI)
 │   │   └── Painel de Entidades ITI.lvdash.json # Definição declarativa do dashboard
 │   ├── ITI_ICP_BRASIL_dashboard.yml     # Declaração do Dashboard AI/BI no Asset Bundle
 │   └── ITI_ICP_BRASIL_job.yml           # Definição do Databricks Workflow Job (Serverless ETL)
 │
 ├── src/                                 # Código-fonte principal da aplicação
-│   ├── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
-│   │   ├── __init__.py                  # Inicialização do módulo Python
-│   │   ├── __main__.py                  # Ponto de entrada para execução como módulo (python -m)
-│   │   ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
-│   │   ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
-│   │   ├── assets/                      # Módulo de comunicação e consumo de APIs externas
-│   │   │   ├── __init__.py
-│   │   │   └── url_iti.py               # Extração de dados da API oficial de entidades do ITI
-│   │   ├── processamento/               # Módulo de transformação e normalização de dados
-│   │   │   ├── __init__.py
-│   │   │   └── flatten.py               # Algoritmo de desaninhamento recursivo de estruturas JSON
-│   │   ├── exportacao/                  # Módulo de carga e persistência de dados
-│   │   │   ├── __init__.py
-│   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volume Raw
-│   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e criação de Tabela Delta
-│   │   │   ├── upload_silver.py         # Pipeline Silver com PySpark DataFrame API & Databricks Connect Serverless
-│   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
-│   │   └── config/                      # Configurações gerais e parâmetros de ambiente
+│   └── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
+│       ├── __init__.py                  # Inicialização do módulo Python
+│       ├── __main__.py                  # Ponto de entrada para execução como módulo (python -m)
+│       ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
+│       ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
+│       ├── assets/                      # Módulo de comunicação e consumo de APIs externas
+│       │   ├── __init__.py
+│       │   └── url_iti.py               # Extração de dados das APIs oficiais de entidades e números
+│       ├── processamento/               # Módulo de transformação e normalização de dados
+│       │   ├── __init__.py
+│       │   └── flatten.py               # Algoritmo de desaninhamento recursivo de estruturas JSON
+│       ├── exportacao/                  # Módulo de carga e persistência de dados
+│       │   ├── __init__.py
+│       │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volumes Raw
+│       │   ├── upload_bronze.py         # Conversão para CSV, upload no Bronze e tabelas Delta
+│       │   ├── upload_silver.py         # Pipeline Silver (PySpark, normalização, flags e MERGE)
+│       │   └── upload_gold.py           # Modelagem dimensional e fatos analíticos via helper resiliente
+│       └── config/                      # Configurações gerais, parâmetros e glossário
+│           ├── __init__.py
+│           ├── config.py                # Resolução inteligente de warehouse_id e credenciais
+│           ├── glossario.py             # Mapeamento semântico de flags, indicadores e macrorregiões
+│           └── logger.py                # Logger centralizado estruturado com emojis
 │
 ├── tests/                               # Suíte de testes automatizados
 │   ├── conftest.py                      # Configurações globais e fixtures do pytest (Spark/Connect)
-│   └── test_package.py                  # Testes unitários do pacote ITI_ICP_BRASIL
+│   ├── test_logger.py                   # Testes de formatação e emissão de logs
+│   └── test_package.py                  # Testes unitários do pacote e resolução de variáveis
 │
 ├── databricks.yml                       # Configuração declarativa do Databricks Asset Bundle (DAB)
 ├── pyproject.toml                       # Especificação do projeto e gerenciamento de dependências
@@ -120,18 +137,21 @@ etl-iti-icp-brasil/
 
 ## 3. 🛠️ Tecnologias e Especificações Técnicas
 
-O projeto utiliza ferramentas de padrões modernos de Engenharia de Dados em Nuvem:
+O projeto utiliza ferramentas e padrões modernos de Engenharia de Dados em Nuvem:
 
-- **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html)
-- **Motor de Computação Distribuída:** Apache Spark / PySpark & [Databricks Workflows](https://docs.databricks.com/workflows/index.html) (Serverless)
-- **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) com computação **Serverless** (`DatabricksSession.builder.serverless(True)`)
-- **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados e Tabelas Delta)
-- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`)
-- **Modelagem Dimensional:** Star Schema (Dimensões e Fatos) otimizado para consumo em ferramentas de BI e Analytics
-- **Gerenciador de Dependências e Ambientes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/)
-- **Análise Estática de Código e Formatação:** [Ruff](https://astral.sh/ruff)
-- **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures do Databricks Connect
-- **Integração e Entrega Contínuas (CI/CD):** GitHub Actions com validação de linters, testes unitários e deploy do bundle
+- **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html) com compilação automatizada em pacotes Wheel (`.whl`).
+- **Motor de Computação Distribuída:** Apache Spark / PySpark & [Databricks Workflows](https://docs.databricks.com/workflows/index.html) (Serverless Compute).
+- **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) com computação Serverless (`DatabricksSession.builder.serverless(True)`).
+- **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados, schemas medalhão e Tabelas Delta).
+- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`).
+- **Técnicas Avançadas de Carga:** 
+  - Deduplicação idempotente via `MERGE` utilizando chave unívoca gerada por hash **SHA2-256**.
+  - Otimização de consultas analíticas com **Liquid Clustering** (`CLUSTER BY`) no Unity Catalog.
+- **Modelagem Dimensional:** Star Schema (Dimensões e Fatos) com CTEs recursivas para desdobramento de hierarquias complexas.
+- **Gerenciador de Dependências e Ambientes:** [Astral uv](https://docs.astral.sh/uv/) / [Hatchling](https://hatch.pypa.io/).
+- **Análise Estática de Código e Formatação:** [Ruff](https://astral.sh/ruff) (`line-length = 120`).
+- **Framework de Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures desacopladas para testes locais e remotos.
+- **Integração e Entrega Contínuas (CI/CD):** GitHub Actions com matriz de versões (`Python 3.10`, `3.11`, `3.12`), validação estática e deploy automático do Bundle.
 
 ---
 
@@ -167,16 +187,16 @@ O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orques
 ### 5.1. Execução Fim a Fim e Modular
 
 ```bash
-# Execução da esteira completa de ponta a ponta
+# Execução da esteira completa de ponta a ponta (todas as 4 camadas)
 uv run main
 # ou
 python -m ITI_ICP_BRASIL
 
 # Execução direcionada de etapas individuais (scripts registrados no pyproject.toml)
-uv run run_raw      # Apenas extração da API ITI e carga no Volume Raw
-uv run run_bronze   # Apenas conversão para CSV e tabela Delta Bronze
-uv run run_silver   # Apenas padronização e tabelas Delta Silver via PySpark Serverless
-uv run run_gold     # Apenas dimensões e fatos Gold via SQL Warehouse
+uv run run_raw      # Extrai entidades e números das APIs e grava nos Volumes Raw
+uv run run_bronze   # Converte JSONs para CSV e carrega tabelas Delta Bronze
+uv run run_silver   # Normalização PySpark Serverless e MERGE idempotente da Silver
+uv run run_gold     # Dimensões e Fatos analíticos otimizados via SQL Warehouse
 ```
 
 ### 5.2. Etapas Executadas pela Pipeline Modular
@@ -185,46 +205,50 @@ Ao ser executada, a função `pipeline()` em `src/ITI_ICP_BRASIL/pipeline.py` or
 
 | Ordem | Etapa / Função | Camada | Descrição Técnica |
 | :---: | :--- | :---: | :--- |
-| **1** | `obter_entidade()` | **Assets** | Coleta os dados abertos na API oficial do ITI e aplica o desaninhamento estrutural (*flatten*). |
-| **2** | `upload_para_volume()` | **0_raw** | Envia o arquivo bruto `entidades.json` para o Volume do Unity Catalog (`/Volumes/lakehouse_iti/0_raw/raw/`). |
-| **3** | `upload_volume_bronze()` | **1_bronze** | Converte o JSON em CSV e persiste no Volume Bronze (`/Volumes/lakehouse_iti/1_bronze/raw/`). |
-| **4** | `upload_tabela_bronze()` | **1_bronze** | Cria/atualiza a tabela Delta `lakehouse_iti.1_bronze.entidades` com metadados de auditoria. |
-| **5** | `upload_silver_entidades()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_entidades` com limpeza de CNPJ e padronização. |
-| **6** | `upload_silver_enderecos()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_enderecos` com enriquecimento de região e endereço formatado. |
-| **7** | `upload_silver_hierarquia()` | **2_silver** | Processa via PySpark Serverless a tabela `lakehouse_iti.2_silver.tbl_hierarquia` explodindo as entidades pai (`ids_pai`). |
-| **8** | `upload_gold_entidades()` | **3_gold** | Cria a tabela dimensional `lakehouse_iti.3_gold.dim_entidade` com visão 360º e granularidade geográfica. |
-| **9** | `upload_gold_hierarquia()` | **3_gold** | Cria a tabela dimensional de subordinação `lakehouse_iti.3_gold.dim_hierarquia`. |
-| **10** | `upload_gold_metricas_entidades()` | **3_gold** | Cria a tabela fato `lakehouse_iti.3_gold.fato_metricas_entidades` via CTE recursiva consolidando métricas da cadeia. |
+| **1** | `upload_volume_iti_entidades()` | **0_raw** | Extrai entidades credenciadas da API oficial e grava em `/Volumes/lakehouse_iti/0_raw/raw/entidades.json`. |
+| **2** | `upload_volume_iti_numeros()` | **0_raw** | Extrai séries estatísticas do ITI em Números e grava em `/Volumes/lakehouse_iti/0_raw/raw/numeros.json`. |
+| **3** | `upload_volume_bronze_iti_entidades()` | **1_bronze** | Converte JSON de entidades para CSV e persiste no Volume Bronze. |
+| **4** | `upload_volume_bronze_iti_numeros()` | **1_bronze** | Converte JSON de números para CSV e persiste no Volume Bronze. |
+| **5** | `upload_tabela_bronze_iti_entidades()` | **1_bronze** | Cria/atualiza a tabela Delta `lakehouse_iti.1_bronze.entidades` com metadados de auditoria. |
+| **6** | `upload_tabela_bronze_iti_numeros()` | **1_bronze** | Cria/atualiza a tabela Delta `lakehouse_iti.1_bronze.numeros` com metadados de auditoria. |
+| **7** | `upload_silver_entidades()` | **2_silver** | Processa via PySpark a tabela `lakehouse_iti.2_silver.tbl_entidades` com limpeza de CNPJ e deduplicação. |
+| **8** | `upload_silver_enderecos()` | **2_silver** | Processa via PySpark a tabela `lakehouse_iti.2_silver.tbl_enderecos` com enriquecimento de região (UF) e endereço. |
+| **9** | `upload_silver_hierarquia()` | **2_silver** | Processa via PySpark a tabela `lakehouse_iti.2_silver.tbl_hierarquia` desdobrando as entidades pai. |
+| **10** | `create_tabela_silver_numeros()` | **2_silver** | Cria a DDL da tabela analítica `lakehouse_iti.2_silver.tbl_silver_numeros`. |
+| **11** | `upload_staging_silver_numeros()` | **2_silver** | Aplica o [glossario.py](src/ITI_ICP_BRASIL/config/glossario.py) gerando a staging temporária normalizada `stg_silver_numeros`. |
+| **12** | `merge_tabela_silver_numeros()` | **2_silver** | Executa o `MERGE` idempotente na `tbl_silver_numeros` com chave SHA2-256 e particionamento inteligente. |
+| **13** | `upload_gold()` | **3_gold** | Executa o orquestrador Gold criando de forma resiliente as 3 dimensões e 5 fatos analíticos no Unity Catalog. |
+
+---
 
 ### 5.3. Modelagem e Tabelas Geradas por Camada
 
-- **Camada 1_bronze**:
-  - `lakehouse_iti.1_bronze.entidades`: Dados brutos estruturados com metadados adicionais (`nome_arquivo`, `data_insercao`).
-- **Camada 2_silver** (PySpark & Databricks Connect Serverless):
-  - `lakehouse_iti.2_silver.tbl_entidades`: Entidades limpas, CNPJ formatado (`LPAD` de 14 dígitos), `data_credenciamento` tipada, situação normalizada e deduplicação por chave primária (`id_entidade`).
-  - `lakehouse_iti.2_silver.tbl_enderecos`: Endereços normalizados com campo consolidado `endereco_completo`, enriquecimento de `regiao` (Sudeste, Sul, Nordeste, Centro-Oeste, Norte via UF) e tolerância de casting via `try_cast`.
-  - `lakehouse_iti.2_silver.tbl_hierarquia`: Relações hierárquicas entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
-- **Camada 3_gold** (Modelagem Dimensional Star Schema):
-  - `lakehouse_iti.3_gold.dim_entidade`: Dimensão consolidada com endereço completo, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), credenciamento e auditoria (`DT_CARGA_DW`).
-  - `lakehouse_iti.3_gold.dim_hierarquia`: Dimensão com relações de subordinação direta entre entidades (`ID_ENTIDADE_PAI`, `ID_ENTIDADE`, `DS_NIVEL`).
-  - `lakehouse_iti.3_gold.fato_metricas_entidades`: Fato gerencial calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), agregando métricas da cadeia completa:
-    - `NR_AGREGADOS_AC_NIVEL_1`: Quantidade de ACs de 1º Nível subordinadas.
-    - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
-    - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia consolidada para cada autoridade.
-    - `DT_CARGA_DW`: Timestamp de auditoria da carga.
+#### Camada 1_bronze (Tabelas Brutas Estruturadas)
+- `lakehouse_iti.1_bronze.entidades`: Cadastro bruto de autoridades com campos adicionais de auditoria (`nome_arquivo`, `data_insercao`).
+- `lakehouse_iti.1_bronze.numeros`: Dados brutos desaninhados do portal estatístico ITI em Números.
 
-### 5.4. Execução Modular / Programática
+#### Camada 2_silver (Tabelas Delta Tipadas, Normalizadas & Enriquecidas)
+- `lakehouse_iti.2_silver.tbl_entidades`: Entidades limpas, CNPJ com máscara padronizada (`LPAD` de 14 dígitos), `data_credenciamento` tipada, situação e deduplicação por chave primária (`id_entidade`).
+- `lakehouse_iti.2_silver.tbl_enderecos`: Endereços normalizados com campo consolidado `endereco_completo` e enriquecimento de `regiao` (Sudeste, Sul, Nordeste, Centro-Oeste e Norte).
+- `lakehouse_iti.2_silver.tbl_hierarquia`: Relações de subordinação direta e indireta entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
+- `lakehouse_iti.2_silver.tbl_silver_numeros`: Fato analítica consolidada contendo todas as séries temporais, métricas de emissão e credenciamento, com chave única `CD_CHAVE_INDICADOR` (hash SHA2-256).
 
-Como cada camada é implementada como uma função desacoplada sem blocos diretos de `__main__`, etapas isoladas podem ser importadas e acionadas sob demanda via scripts Python ou notebooks:
+#### Camada 3_gold (Modelagem Dimensional Star Schema & Visões Analíticas)
+- `lakehouse_iti.3_gold.dim_entidade`: Dimensão mestre de entidades enriquecida com localização geográfica e auditoria (`DT_CARGA_DW`).
+- `lakehouse_iti.3_gold.dim_hierarquia`: Dimensão com relações relacionais de subordinação hierárquica.
+- `lakehouse_iti.3_gold.fato_metricas_entidades`: Fato calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), consolidando métricas da cadeia para cada autoridade:
+  - `NR_AGREGADOS_AC_NIVEL_1`: Quantidade de ACs de 1º Nível subordinadas.
+  - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
+  - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia consolidada.
+- `lakehouse_iti.3_gold.fato_emissao_mensal`: Séries temporais de emissão mensal e históricos anuais (Ativos vs. Emitidos), agrupadas e otimizadas com `CLUSTER BY (DT_ANO, DS_TIPO_SERIE)`.
+- `lakehouse_iti.3_gold.fato_distribuicao_geografica`: Métricas agregadas por UF e Macrorregião, otimizadas com `CLUSTER BY (SG_UF, DT_ANO)`.
+- `lakehouse_iti.3_gold.fato_segmentacao_certificados`: Cortes analíticos por tipo de certificado (`A1`, `A3`) e titularidade (`PESSOA FISICA`, `PESSOA JURIDICA`, `EQUIPAMENTO`), otimizadas com `CLUSTER BY (DT_ANO, DS_CATEGORIA_CORTE)`.
+- `lakehouse_iti.3_gold.fato_infraestrutura_credenciamento`: Histórico de credenciamento de novos pontos de atendimento (ARs) ao longo do tempo, otimizadas com `CLUSTER BY (DT_ANO, DT_MES_ANO)`.
+- `lakehouse_iti.3_gold.kpi_resumo_executivo`: Indicadores estratégicos de resumo executivo, comparativos absolutos e percentuais e metas/projeções para tomada de decisão, otimizadas com `CLUSTER BY (DS_TIPO_INDICADOR, DS_INDICADOR)`.
 
-```python
-from ITI_ICP_BRASIL.exportacao.upload_bronze import upload_tabela_bronze
+---
 
-# Execução direcionada de uma etapa isolada
-upload_tabela_bronze()
-```
-
-### 5.5. Comandos do Databricks Asset Bundle (DAB)
+### 5.4. Comandos do Databricks Asset Bundle (DAB)
 
 ```bash
 # Validação sintática das configurações e declarações do bundle
@@ -240,9 +264,9 @@ databricks bundle deploy --target prod
 databricks bundle run ITI_ICP_BRASIL_job
 ```
 
-#### 5.5.1. Arquitetura da DAG de Tarefas no Databricks Workflows
+#### 5.4.1. Arquitetura da DAG de Tarefas no Databricks Workflows
 
-O job gerenciado no Databricks opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência:
+O job gerenciado no Databricks opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência operacional:
 
 ```mermaid
 graph LR
@@ -251,8 +275,8 @@ graph LR
     C --> D["4. processar_gold<br/>(retry: 2x | int: 5s)"]
 ```
 
-- **Isolamento de Falhas:** Caso ocorra instabilidade temporária na API externa do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas).
-- **Eficiência Computacional:** Se houver erro em uma camada posterior (como Silver ou Gold), o Databricks refaz apenas a camada com falha, preservando os dados já processados com sucesso nas camadas antecedentes sem custo redundante de computação.
+- **Isolamento de Falhas:** Caso ocorra instabilidade temporária nas APIs governamentais do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas).
+- **Eficiência Computacional:** Se houver erro em uma camada posterior (como Silver ou Gold), o Databricks reexecuta apenas a tarefa com falha, preservando os dados já processados nas etapas anteriores sem custo redundante de computação.
 - **Agendamento Automático (*Cron Schedule*):** O job é programado para execução diária às **08:00 (Horário de Brasília — `America/Sao_Paulo`)**, operando de forma 100% autônoma no ambiente de Produção.
 
 ---
@@ -307,22 +331,17 @@ uv run ruff format .
 
 ---
 
-## 8. 🗺️ Roadmap de Evolução: Integração com "ITI em Números" & Databricks Genie
+## 8. 🗺️ Roadmap de Evolução: Databricks Genie & Analytics Avançado
 
-A esteira implementada na **Fase 1** consolida a **base cadastral e dimensional (Master Data)** de todas as autoridades certificadoras e de registro da ICP-Brasil, com rastreabilidade da árvore hierárquica e distribuição geográfica.
+Com as **Fases 1 e 2 concluídas**, o Lakehouse dispõe da cadeia mestra de entidades e de todo o histórico analítico de emissões e credenciamentos.
 
-A **Fase 2** do projeto expandirá o ecossistema analítico com as seguintes frentes:
+A **Fase 3** do projeto concentrará as seguintes entregas:
 
-1. **Ingestão de Dados Estatísticos Dinâmicos (*ITI em Números*):**
-   - Nova esteira de ETL para ingestão das séries temporais e volumétricas de emissões de certificados digitais no território nacional (agrupadas por UF, macrorregião, ano/mês e modalidades como e-CPF, e-CNPJ, NF-e, A1, A3, etc.).
-   - *Nota de Governança:* Em conformidade com as diretrizes concorrenciais e estratégicas do ITI, os dados de emissão disponibilizados são estatísticos e agregados territorialmente, preservando o sigilo comercial das emissões individuais por AC/AR específica.
-
+1. **Analytics Conversacional com Databricks Genie (AI/BI):**
+   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog (`lakehouse_iti.3_gold.*`), permitindo que analistas formulem perguntas em linguagem natural:
+     - *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*
+     - *"Quais estados possuem a maior relação de emissões por autoridade credenciada?"*
 2. **Correlação de Oferta Instalada vs. Demanda de Mercado:**
-   - Cruzamento das séries de emissão com a `dim_entidade`, possibilitando métricas comparativas como:
-     - Densidade de autoridades credenciadas vs. volume demandado de certificados por estado.
-     - Identificação de regiões com alta demanda e potencial desassistência de pontos de atendimento (ARs).
-
-3. **Analytics Conversacional com Databricks Genie (AI/BI):**
-   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog, habilitando que analistas realizem levantamentos estatísticos, análises exploratórias e geração de insights através de linguagem natural (e.g., *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*).
-
-
+   - Cruzamento das séries de emissão com a `dim_entidade` para identificar regiões de alta demanda com potencial desassistência de postos físicos de atendimento.
+3. **Expansão do AI/BI Dashboard:**
+   - Adição de abas de séries temporais de emissão, segmentação PF/PJ e mapas temáticos de calor alimentados pelas novas tabelas Gold.
