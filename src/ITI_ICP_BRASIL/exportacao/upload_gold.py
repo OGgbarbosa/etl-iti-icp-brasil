@@ -339,7 +339,7 @@ def upload_gold_kpi_resumo_executivo(w=None, warehouse_id=None):
     executar_statement_delta(w, warehouse_id, sql, tabela_destino_kpi_resumo_executivo)
 
 
-def upload_gold_todas(w=None, warehouse_id=None):
+def upload_gold(w=None, warehouse_id=None):
     """Executa a criação/atualização de todas as tabelas Gold."""
     if not w or not warehouse_id:
         w, warehouse_id = garantir_schema_gold()
@@ -356,4 +356,4 @@ def upload_gold_todas(w=None, warehouse_id=None):
 
 
 if __name__ == '__main__':
-    upload_gold_todas()
+    upload_gold()
