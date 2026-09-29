@@ -419,11 +419,11 @@ def merge_tabela_silver_numeros():
                         ELSE NULL END AS DT_ANO
                         ,id AS SG_UF
                         ,CASE
-                            WHEN id IN ('SP', 'RJ', 'MG', 'ES') THEN 'Sudeste'
-                            WHEN id IN ('PR', 'SC', 'RS') THEN 'Sul'
-                            WHEN id IN ('BA', 'SE', 'AL', 'PE', 'CE', 'PI', 'RN', 'PB') THEN 'Nordeste'
-                            WHEN id IN ('AM', 'PA', 'TO', 'RR', 'AP', 'AC', 'RO') THEN 'Norte'
-                            WHEN id IN ('MT', 'MS', 'GO', 'DF') THEN 'Centro Oeste'
+                            WHEN id IN ('SP', 'RJ', 'MG', 'ES') THEN 'SUDESTE'
+                            WHEN id IN ('PR', 'SC', 'RS') THEN 'SUL'
+                            WHEN id IN ('BA', 'SE', 'AL', 'PE', 'CE', 'PI', 'RN', 'PB', 'MA') THEN 'NORDESTE'
+                            WHEN id IN ('AM', 'PA', 'TO', 'RR', 'AP', 'AC', 'RO') THEN 'NORTE'
+                            WHEN id IN ('MT', 'MS', 'GO', 'DF') THEN 'CENTRO-OESTE'
                             ELSE reg 
                         END AS DS_REGIAO
                         ,CAST(COALESCE(count, value) AS DOUBLE) AS VL_METRICA
