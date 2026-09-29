@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "requests>=2.31.0",
     "databricks-sdk>=0.20.0",
+    "pandas>=2.0.0",
 ]
 
 [dependency-groups]

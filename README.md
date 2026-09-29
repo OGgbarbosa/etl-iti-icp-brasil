@@ -7,9 +7,10 @@
 ![Ruff](https://img.shields.io/badge/Linter-Ruff-261230?logo=ruff&logoColor=white)
 ![uv](https://img.shields.io/badge/Package_Manager-uv-DE5FE9?logo=astral&logoColor=white)
 
-> ⚠️ **Status do Projeto:** 🚧 **Em Desenvolvimento (*Work in Progress*)**  
+> 🚀 **Status do Projeto:** ✅ **Fases 1 e 2 Concluídas e Integradas no Lakehouse**  
 > - **Fase 1 (Concluída):** Esteira de dados cadastrais e mestres das entidades ICP-Brasil (Extração, Normalização, PySpark Serverless, Modelagem Dimensional Star Schema e AI/BI Dashboard).  
-> - **Fase 2 (Em Andamento - Silver Concluída):** Ingestão e ETL dos dados estatísticos do portal **ITI em Números** (volumetria agregada de emissões por UF, período, modalidade e infraestrutura). Camadas Raw, Bronze e Silver com histórico cumulativo (MERGE idempotente via SHA-256 e Liquid Clustering) implementadas; modelagem Gold e análises conversacionais via **Databricks Genie** em andamento.
+> - **Fase 2 (Concluída):** Ingestão e ETL analítico dos dados estatísticos do portal **ITI em Números** (volumetria agregada de emissões por UF, período, modalidade e credenciamento), com histórico cumulativo (MERGE idempotente via SHA-256) e 5 tabelas analíticas Gold otimizadas via *Liquid Clustering*.  
+> - **Fase 3 (Em Andamento):** Analytics conversacional via **Databricks Genie** e expansão dos painéis analíticos com cruzamento de infraestrutura instalada vs. demanda de mercado.
 
 ---
 
@@ -30,9 +31,9 @@ Contudo, essas bases apresentam desafios analíticos significativos quando consu
 - Tratamento e normalização de dados cadastrais;
 - Modelagem da hierarquia de ACs e ARs;
 - Consolidação histórica dos indicadores do ITI em Números;
-- Garantia de idempotência durante reprocessamentos;
+- Garantia de idempotência durante reprocessamentos via chave hash SHA2-256;
 - Integração entre dados cadastrais e estatísticos com diferentes granularidades;
-- Execução local utilizando computação Serverless remota.
+- Execução local utilizando computação Serverless remota via Databricks Connect.
 
 ---
 
@@ -53,7 +54,7 @@ Antes da codificação, o projeto foi estruturado a partir de decisões arquitet
 * **Racional:** Aproveitamento da computação distribuída nativa no Databricks. É a camada ideal para limpezas estruturais, formatação de CNPJs (`LPAD`), enriquecimento geográfico por macrorregiões, deduplicação por chave de negócio e resolução de séries históricas de estatísticas com surrogate keys SHA-256 (`CD_CHAVE_INDICADOR`), clusters Delta gerenciados por **Liquid Clustering** (`CLUSTER BY (DT_ANO, DS_FLAG)`).
 
 ### 2.4. Governança e Regras de Negócio Declarativas (3_gold via ANSI SQL)
-* **Decisão:** Modelagem dimensional final e agregações expressas em **ANSI SQL** executadas via Databricks SQL Warehouse.
+* **Decisão:** Modelagem dimensional final e agregações expressas em **ANSI SQL** executadas via Databricks SQL Warehouse com helper resiliente (`executar_statement_delta`).
 * **Racional:** Permite expressar regras de negócio, transformações relacionais e cálculos recursivos de cadeia hierárquica (`WITH RECURSIVE`) de maneira declarativa, padronizada e legível. A manutenibilidade, transparência e auditoria tornam-se simples para engenheiros de dados e analistas de BI.
 
 ### 2.5. Modelagem Analítica (Star Schema)
@@ -87,7 +88,7 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
                                    │
                                    ▼ (Conversão CSV & Statement Execution API / Databricks Jobs)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 1_bronze (Volumes & Tabelas Delta)                                        │
+│ Camada 1_bronze (Volumes & Tabelas Delta Brutas)                                 │
 │ ├── Volumes: entidades.csv / numeros.csv                                         │
 │ ├── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
 │ └── Tabela Delta: lakehouse_iti.1_bronze.numeros (dados estatísticos de emissão) │
@@ -103,20 +104,26 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 │ └── Tabela Delta: lakehouse_iti.2_silver.tbl_silver_numeros (Cluster By Ano/Flag)│
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                    │
-                                   ▼ (Modelagem Dimensional & Visões Analíticas)
+                                   ▼ (Modelagem Dimensional, Liquid Clustering & CTEs Recursivas)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 3_gold (Tabelas Delta Dimensionais & Fatos de Consumo)                    │
-│ ├── Dimensão: lakehouse_iti.3_gold.dim_entidade (enriquecida com região e audit.)│
-│ ├── Dimensão: lakehouse_iti.3_gold.dim_hierarquia (árvore de subordinação)       │
-│ └── Fato:     lakehouse_iti.3_gold.fato_metricas_entidades (métricas da cadeia)  │
+│ Camada 3_gold (Tabelas Delta de Consumo & Visões Analíticas Otimizadas)          │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade (visão 360º de autoridades)   │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia (subordinação direta)       │
+│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE recursiva)    │
+│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal (CLUSTER BY Ano, Tipo) │
+│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica (CLUSTER UF)  │
+│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados (A1/A3, PF) │
+│ ├── Fato Infra:  lakehouse_iti.3_gold.fato_infraestrutura_credenciamento         │
+│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo (Metas e Comps)       │
 └─────────────────────────────────┬────────────────────────────────────────────────┘
                                    │
-                                   ▼ (Visualização Analítica & Tomada de Decisão)
+                                   ▼ (Visualização Analítica, Tomada de Decisão & IA)
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard & Genie)           │
-│ └── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
-│     ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                   │
-│     └── Datasets Analíticos conectados diretamente às Tabelas Gold               │
+│ ├── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
+│ │   ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                   │
+│ │   └── Datasets Analíticos conectados diretamente às Tabelas Gold               │
+│ └── Genie:  Espaço Semântico Conversacional (consultas analíticas em linguagem NL)│
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -140,35 +147,35 @@ etl-iti-icp-brasil/
 │       ├── Painel de Entidades ITI.pdf  # Captura oficial em PDF exportada do Databricks
 │       └── painel_entidades_iti_readme.png # Captura visual do painel incorporada na documentação
 │
-├── resources/                           # Definições declarativas de recursos no Databricks
+├── resources/                           # Definições declarativas de recursos no Databricks (DABs)
 │   ├── dashboards/                      # Especificações de dashboards (Lakeview / AI/BI)
 │   │   └── Painel de Entidades ITI.lvdash.json # Definição declarativa do dashboard
 │   ├── ITI_ICP_BRASIL_dashboard.yml     # Declaração do Dashboard AI/BI no Asset Bundle
 │   └── ITI_ICP_BRASIL_job.yml           # Definição do Databricks Workflow Job (Serverless ETL)
 │
 ├── src/                                 # Código-fonte principal da aplicação
-│   ├── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
-│   │   ├── __init__.py                  # Inicialização do módulo Python
-│   │   ├── __main__.py                  # Ponto de entrada para execução como módulo (python -m)
-│   │   ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
-│   │   ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
-│   │   ├── assets/                      # Módulo de comunicação e consumo de APIs externas
-│   │   │   ├── __init__.py
-│   │   │   └── url_iti.py               # Extração de dados da API oficial de entidades e números
-│   │   ├── processamento/               # Módulo de transformação e normalização de dados
-│   │   │   ├── __init__.py
-│   │   │   └── flatten.py               # Algoritmo de desaninhamento recursivo de estruturas JSON
-│   │   ├── exportacao/                  # Módulo de carga e persistência de dados
-│   │   │   ├── __init__.py
-│   │   │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volumes Raw
-│   │   │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e Tabelas Delta
-│   │   │   ├── upload_silver.py         # Pipeline Silver com PySpark DataFrame API & Delta MERGE
-│   │   │   └── upload_gold.py           # Modelagem e carga da camada Gold (dimensões e fatos)
-│   │   └── config/                      # Configurações gerais e parâmetros de ambiente
-│   │       ├── __init__.py
-│   │       ├── config.py                # Definição de endpoints, volumes, tabelas e warehouse_id
-│   │       ├── glossario.py             # Dicionários de termos, flags analíticas e dimensões temporais
-│   │       └── logger.py                # Utilitário centralizado de logging com formatação visual
+│   └── ITI_ICP_BRASIL/                  # Pacote Python para extração, tratamento e carga
+│       ├── __init__.py                  # Inicialização do módulo Python
+│       ├── __main__.py                  # Ponto de entrada para execução como módulo (python -m)
+│       ├── main.py                      # Ponto de entrada de execução do pacote (CLI entrypoint)
+│       ├── pipeline.py                  # Orquestração da pipeline modular fim a fim
+│       ├── assets/                      # Módulo de comunicação e consumo de APIs externas
+│       │   ├── __init__.py
+│       │   └── url_iti.py               # Extração de dados da API oficial de entidades e números
+│       ├── processamento/               # Módulo de transformação e normalização de dados
+│       │   ├── __init__.py
+│       │   └── flatten.py               # Algoritmo de desaninhamento recursivo de estruturas JSON
+│       ├── exportacao/                  # Módulo de carga e persistência de dados
+│       │   ├── __init__.py
+│       │   ├── upload_raw.py            # Upload de dados brutos (JSON) para Volumes Raw
+│       │   ├── upload_bronze.py         # Conversão para CSV, upload no Volume Bronze e Tabelas Delta
+│       │   ├── upload_silver.py         # Pipeline Silver com PySpark DataFrame API & Delta MERGE
+│       │   └── upload_gold.py           # Modelagem dimensional e fatos analíticos via helper resiliente
+│       └── config/                      # Configurações gerais e parâmetros de ambiente
+│           ├── __init__.py
+│           ├── config.py                # Definição de endpoints, volumes, tabelas e warehouse_id
+│           ├── glossario.py             # Dicionários de termos, flags analíticas e dimensões temporais
+│           └── logger.py                # Utilitário centralizado de logging com formatação visual
 │
 ├── tests/                               # Suíte de testes automatizados
 │   ├── conftest.py                      # Configurações globais e fixtures do pytest (Spark/Connect)
@@ -188,16 +195,16 @@ etl-iti-icp-brasil/
 
 Com base nas decisões de arquitetura, o projeto foi implementado utilizando padrões modernos de Engenharia de Dados em Nuvem:
 
-- **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html) e [Databricks Workflows](https://docs.databricks.com/workflows/index.html)
-- **Motor de Computação Distribuída:** Apache Spark / PySpark & Delta Lake (Serverless Compute)
-- **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) acoplado a Serverless (`DatabricksSession.builder.serverless(True)`)
-- **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados, Tabelas Delta com Liquid Clustering)
-- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`) com fallback resiliente de SQL Warehouse
-- **Modelagem Analítica:** Star Schema (Dimensões, Fato com CTE Recursiva e Séries Históricas com surrogate key SHA-256)
-- **Gerenciador de Dependências:** [Astral uv](https://docs.astral.sh/uv/) e [Hatchling](https://hatch.pypa.io/)
-- **Análise Estática e Linter:** [Ruff](https://astral.sh/ruff)
-- **Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures desacopladas
-- **CI/CD:** GitHub Actions com validação de linters, testes e deploy automatizado do bundle
+- **Plataforma e Orquestração:** [Databricks Asset Bundles (DABs)](https://docs.databricks.com/dev-tools/bundles/index.html) e [Databricks Workflows](https://docs.databricks.com/workflows/index.html) (Serverless Compute).
+- **Motor de Computação Distribuída:** Apache Spark / PySpark & Delta Lake (Serverless Compute).
+- **Execução Local Remota:** [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect/python/index.html) acoplado a Serverless (`DatabricksSession.builder.serverless(True)`).
+- **Armazenamento e Governança:** Databricks Unity Catalog (`Volumes` gerenciados, Tabelas Delta com Liquid Clustering).
+- **SDK de Integração:** [Databricks SDK para Python](https://docs.databricks.com/dev-tools/sdk-python.html) (`WorkspaceClient`, `StatementExecutionAPI`, `VolumesAPI`, `FilesAPI`) com fallback resiliente de SQL Warehouse.
+- **Modelagem Analítica:** Star Schema (Dimensões, Fato com CTE Recursiva e Séries Históricas com surrogate key SHA-256).
+- **Gerenciador de Dependências:** [Astral uv](https://docs.astral.sh/uv/) e [Hatchling](https://hatch.pypa.io/).
+- **Análise Estática e Linter:** [Ruff](https://astral.sh/ruff) (`line-length = 120`).
+- **Testes Automatizados:** [pytest](https://docs.pytest.org/) com fixtures desacopladas.
+- **CI/CD:** GitHub Actions com matriz de versões (`Python 3.10`, `3.11`, `3.12`), validação de linters, testes e deploy automatizado do bundle.
 
 ---
 
@@ -233,7 +240,7 @@ O fluxo completo de ponta a ponta (Raw ➔ Bronze ➔ Silver ➔ Gold) é orques
 ### 7.1. Execução Fim a Fim e Modular
 
 ```bash
-# Execução da esteira completa de ponta a ponta
+# Execução da esteira completa de ponta a ponta (todas as 4 camadas)
 uv run main
 # ou
 python -m ITI_ICP_BRASIL
@@ -263,9 +270,7 @@ Ao ser executada, a função `pipeline()` em [src/ITI_ICP_BRASIL/pipeline.py](sr
 | **10** | `create_tabela_silver_numeros()` | **2_silver** | Cria a tabela mestre Delta `lakehouse_iti.2_silver.tbl_silver_numeros` com Liquid Clustering por Ano e Flag. |
 | **11** | `upload_staging_silver_numeros()` | **2_silver** | Efetua casting, enriquecimento via `glossario.py` e grava `lakehouse_iti.2_silver.stg_silver_numeros`. |
 | **12** | `merge_tabela_silver_numeros()` | **2_silver** | Executa `MERGE` idempotente via surrogate key SHA-256 (`CD_CHAVE_INDICADOR`) acumulando séries históricas. |
-| **13** | `upload_gold_entidades()` | **3_gold** | Cria a tabela dimensional `lakehouse_iti.3_gold.dim_entidade` com visão 360º e granularidade geográfica. |
-| **14** | `upload_gold_hierarquia()` | **3_gold** | Cria a tabela dimensional de subordinação `lakehouse_iti.3_gold.dim_hierarquia`. |
-| **15** | `upload_gold_metricas_entidades()` | **3_gold** | Cria a tabela fato `lakehouse_iti.3_gold.fato_metricas_entidades` via CTE recursiva consolidando a cadeia. |
+| **13** | `upload_gold()` | **3_gold** | Executa o orquestrador Gold criando de forma resiliente as 3 dimensões e 5 fatos analíticos no Unity Catalog. |
 
 ### 7.3. Modelagem e Tabelas Geradas por Camada
 
@@ -278,7 +283,7 @@ Ao ser executada, a função `pipeline()` em [src/ITI_ICP_BRASIL/pipeline.py](sr
   - `lakehouse_iti.2_silver.tbl_hierarquia`: Relações hierárquicas entre entidades (`id_entidade`, `id_entidade_pai`, `nivel_hierarquia_filho`).
   - `lakehouse_iti.2_silver.stg_silver_numeros`: Staging tipado dos números com enriquecimento de termos e flags analíticas via `glossario.py` e normalização de datas.
   - `lakehouse_iti.2_silver.tbl_silver_numeros`: Tabela mestre consolidada via `MERGE` idempotente com surrogate key SHA-256 (`CD_CHAVE_INDICADOR`), histórico cumulativo plurianual e Liquid Clustering por `(DT_ANO, DS_FLAG)`.
-- **Camada 3_gold** (Modelagem Dimensional Star Schema):
+- **Camada 3_gold** (Modelagem Dimensional Star Schema & Visões Otimizadas com Liquid Clustering):
   - `lakehouse_iti.3_gold.dim_entidade`: Dimensão consolidada com endereço completo, granularidade geográfica (`SG_UF`, `DS_REGIAO`, `NM_CIDADE`, `NM_BAIRRO`, `NR_CEP`), credenciamento e auditoria (`DT_CARGA_DW`).
   - `lakehouse_iti.3_gold.dim_hierarquia`: Dimensão com relações de subordinação direta entre entidades (`ID_ENTIDADE_PAI`, `ID_ENTIDADE`, `DS_NIVEL`).
   - `lakehouse_iti.3_gold.fato_metricas_entidades`: Fato gerencial calculada via **CTE Recursiva** (`WITH RECURSIVE hierarquia_completa`), agregando métricas da cadeia completa:
@@ -286,6 +291,11 @@ Ao ser executada, a função `pipeline()` em [src/ITI_ICP_BRASIL/pipeline.py](sr
     - `NR_AGREGADOS_AC_NIVEL_2`: Quantidade de ACs de 2º Nível subordinadas.
     - `NR_AGREGADOS_AR`: Quantidade total de ARs na cadeia consolidada para cada autoridade.
     - `DT_CARGA_DW`: Timestamp de auditoria da carga.
+  - `lakehouse_iti.3_gold.fato_emissao_mensal`: Séries temporais de emissão mensal e históricos anuais (Ativos vs. Emitidos), agrupadas e otimizadas com `CLUSTER BY (DT_ANO, DS_TIPO_SERIE)`.
+  - `lakehouse_iti.3_gold.fato_distribuicao_geografica`: Métricas agregadas por UF e Macrorregião, otimizadas com `CLUSTER BY (SG_UF, DT_ANO)`.
+  - `lakehouse_iti.3_gold.fato_segmentacao_certificados`: Cortes analíticos por tipo de certificado (`A1`, `A3`) e titularidade (`PESSOA FISICA`, `PESSOA JURIDICA`, `EQUIPAMENTO`), otimizadas com `CLUSTER BY (DT_ANO, DS_CATEGORIA_CORTE)`.
+  - `lakehouse_iti.3_gold.fato_infraestrutura_credenciamento`: Histórico de credenciamento de novos pontos de atendimento (ARs) ao longo do tempo, otimizadas com `CLUSTER BY (DT_ANO, DT_MES_ANO)`.
+  - `lakehouse_iti.3_gold.kpi_resumo_executivo`: Indicadores estratégicos de resumo executivo, comparativos absolutos e percentuais e metas/projeções para tomada de decisão, otimizadas com `CLUSTER BY (DS_TIPO_INDICADOR, DS_INDICADOR)`.
 
 ### 7.4. Execução Modular / Programática
 
@@ -316,7 +326,7 @@ databricks bundle run ITI_ICP_BRASIL_job
 
 #### 7.5.1. Arquitetura da DAG de Tarefas no Databricks Workflows
 
-O job gerenciado no Databricks opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência:
+O job gerenciado no Databricks opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência operacional:
 
 ```mermaid
 graph LR
@@ -327,7 +337,7 @@ graph LR
 
 - **Isolamento de Falhas:** Caso ocorra instabilidade temporária na API externa do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas).
 - **Eficiência Computacional:** Se houver erro em uma camada posterior, o Databricks refaz apenas a tarefa impactada, preservando os dados já processados nas camadas anteriores.
-- **Agendamento Automático (*Cron Schedule*):** O job é programado para execução diária às **08:00 (Horário de Brasília — `America/Sao_Paulo`)**, operando de forma autônoma no ambiente de Produção.
+- **Agendamento Automático (*Cron Schedule*):** O job é programado para execução diária às **08:00 (Horário de Brasília — `America/Sao_Paulo`)**, operando de forma 100% autônoma no ambiente de Produção.
 
 ---
 
@@ -370,7 +380,7 @@ Mais do que a execução de scripts de ETL, a solução entrega uma infraestrutu
 
 - **+11.200 Registros Brutos** processados, normalizados e catalogados com linhagem clara.
 - **+11.000 Entidades da ICP-Brasil** mapeadas em árvore de subordinação hierárquica completa.
-- **Tabelas Delta gerenciadas** nas camadas Bronze, Silver e Gold, com governança no Unity Catalog e suporte a **Liquid Clustering** (`CLUSTER BY (DT_ANO, DS_FLAG)`).
+- **Tabelas Delta gerenciadas** nas camadas Bronze, Silver e Gold, com governança no Unity Catalog e suporte a **Liquid Clustering** (`CLUSTER BY`).
 - **Consolidação Histórica Idempotente** via chave surrogate SHA-256 (`CD_CHAVE_INDICADOR`), permitindo reprocessamentos sem duplicidades ou colisões.
 - **4 Camadas Ativas** no Lakehouse (0_raw ➔ 1_bronze ➔ 2_silver ➔ 3_gold), com governança centralizada no Unity Catalog.
 - **Orquestração Autônoma em Produção** via Databricks Workflows com agendamento diário e políticas automáticas de retry.
@@ -417,15 +427,14 @@ Este projeto utilizou ferramentas de Inteligência Artificial de forma colaborat
 
 A esteira implementada consolida a base mestra cadastral e o histórico analítico de emissões:
 
-1. **Ingestão e Consolidação Histórica de Estatísticas (*ITI em Números*) — [Concluída na Silver]:**
-   - Esteira completa de ingestão (Raw e Bronze) e consolidação na Silver (`tbl_silver_numeros`) com resolução de chaves SHA-256 e categorização padronizada por flags canônicas de negócio (`cer`, `reg`, `dis`, `inf`).
+1. **Ingestão e Consolidação Histórica de Estatísticas (*ITI em Números*) — [Concluída]:**
+   - Esteira completa de ingestão (Raw e Bronze), consolidação na Silver (`tbl_silver_numeros` via MERGE idempotente SHA-256) e modelagem Gold com 5 tabelas analíticas (`fato_emissao_mensal`, `fato_distribuicao_geografica`, `fato_segmentacao_certificados`, `fato_infraestrutura_credenciamento` e `kpi_resumo_executivo`).
    - *Nota de Governança:* Em conformidade com as diretrizes concorrenciais e estratégicas do ITI, os dados de emissão disponibilizados são estatísticos e agregados territorialmente, preservando o sigilo comercial das emissões individuais por AC/AR específica.
 
-2. **Modelagem Dimensional Gold de Emissões & Cruzamento Oferta vs. Demanda — [Em Desenvolvimento]:**
-   - Criação das tabelas fato especializadas na Camada Gold (`fato_emissao_mensal`, `fato_distribuicao_geografica`, `fato_segmentacao_certificados`, `fato_infraestrutura_credenciamento` e `kpi_resumo_executivo`).
+2. **Cruzamento de Oferta Instalada vs. Demanda de Mercado — [Em Desenvolvimento]:**
    - Cruzamento analítico das séries de emissão com a infraestrutura credenciada (`dim_entidade` e `dim_hierarquia`):
      - Densidade de autoridades credenciadas vs. volume demandado de certificados por estado.
      - Identificação de regiões com alta demanda e potencial desassistência de pontos de atendimento (ARs).
 
 3. **Analytics Conversacional com Databricks Genie (AI/BI):**
-   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog, habilitando que analistas realizem levantamentos estatísticos, análises exploratórias e geração de insights através de linguagem natural (e.g., *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*).
+   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog (`lakehouse_iti.3_gold.*`), habilitando que analistas realizem levantamentos estatísticos, análises exploratórias e geração de insights através de linguagem natural (e.g., *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*).
