@@ -4,11 +4,7 @@ from ITI_ICP_BRASIL.exportacao.upload_bronze import (
     upload_volume_bronze_iti_entidades,
     upload_volume_bronze_iti_numeros,
 )
-from ITI_ICP_BRASIL.exportacao.upload_gold import (
-    upload_gold_entidades,
-    upload_gold_hierarquia,
-    upload_gold_metricas_entidades,
-)
+from ITI_ICP_BRASIL.exportacao.upload_gold import upload_gold
 from ITI_ICP_BRASIL.exportacao.upload_raw import (
     upload_volume_iti_entidades,
     upload_volume_iti_numeros,
@@ -48,10 +44,8 @@ def run_silver() -> None:
 
 
 def run_gold() -> None:
-    """Gera a modelagem dimensional Gold (dimensões e tabela fato com métricas recursivas)."""
-    upload_gold_entidades()
-    upload_gold_hierarquia()
-    upload_gold_metricas_entidades()
+    """Gera a modelagem dimensional Gold (dimensões, fatos analíticos e KPIs executivos)."""
+    upload_gold()
 
 
 def pipeline() -> None:
