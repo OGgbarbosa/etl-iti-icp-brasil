@@ -76,55 +76,60 @@ Antes da codificação, o projeto foi estruturado a partir de decisões arquitet
 A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**, integrando os dados cadastrais das entidades e as séries estatísticas de números com governança centralizada no **Unity Catalog**:
 
 ```text
-                  [ APIs Oficiais do ITI / ICP-Brasil ]
+                         [ APIs Oficiais do ITI / ICP-Brasil ]
                  (Estrutura Organizacional & ITI em Números)
-                                   │
-                                   ▼ (Módulo de Extração & Flatten)
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 0_raw (Volumes do Unity Catalog)                                          │
-│ ├── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                      │
-│ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/numeros.json                        │
-└─────────────────────────────────┬────────────────────────────────────────────────┘
-                                   │
-                                   ▼ (Conversão CSV & Statement Execution API / Databricks Jobs)
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 1_bronze (Volumes & Tabelas Delta Brutas)                                 │
-│ ├── Volumes: entidades.csv / numeros.csv                                         │
-│ ├── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)   │
-│ └── Tabela Delta: lakehouse_iti.1_bronze.numeros (dados estatísticos de emissão) │
-└─────────────────────────────────┬────────────────────────────────────────────────┘
-                                   │
-                                   ▼ (Transformações, PySpark Serverless & MERGE Idempotente)
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 2_silver (Tabelas Delta Normalizadas, Enriquecidas & Séries Históricas)   │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_entidades                           │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos (com região e end. compl.)│
-│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_hierarquia                          │
-│ ├── Tabela Delta: lakehouse_iti.2_silver.stg_silver_numeros (staging tipado)     │
-│ └── Tabela Delta: lakehouse_iti.2_silver.tbl_silver_numeros (Cluster By Ano/Flag)│
-└─────────────────────────────────┬────────────────────────────────────────────────┘
-                                   │
-                                   ▼ (Modelagem Dimensional, Liquid Clustering & CTEs Recursivas)
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada 3_gold (Tabelas Delta de Consumo & Visões Analíticas Otimizadas)          │
-│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade (visão 360º de autoridades)   │
-│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia (subordinação direta)       │
-│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE recursiva)    │
-│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal (CLUSTER BY Ano, Tipo) │
-│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica (CLUSTER UF)  │
-│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados (A1/A3, PF) │
-│ ├── Fato Infra:  lakehouse_iti.3_gold.fato_infraestrutura_credenciamento         │
-│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo (Metas e Comps)       │
-└─────────────────────────────────┬────────────────────────────────────────────────┘
-                                   │
-                                   ▼ (Visualização Analítica, Tomada de Decisão & IA)
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard & Genie)           │
-│ ├── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)   │
-│ │   ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                   │
-│ │   └── Datasets Analíticos conectados diretamente às Tabelas Gold               │
+                                    │
+                                    ▼ 
+                           (Módulo de Extração & Flatten)
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ Camada 0_raw (Volumes do Unity Catalog)                                           │
+│ ├── Volume: /Volumes/lakehouse_iti/0_raw/raw/entidades.json                       │
+│ └── Volume: /Volumes/lakehouse_iti/0_raw/raw/numeros.json                         │
+└───────────────────────────────────┬───────────────────────────────────────────────┘
+                                    │
+                                    ▼ 
+         (Conversão CSV & Statement Execution API / Databricks Jobs)
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ Camada 1_bronze (Volumes & Tabelas Delta Brutas)                                  │
+│ ├── Volumes: entidades.csv / numeros.csv                                          │
+│ ├── Tabela Delta: lakehouse_iti.1_bronze.entidades (com metadados e auditoria)    │
+│ └── Tabela Delta: lakehouse_iti.1_bronze.numeros (dados estatísticos de emissão)  │
+└───────────────────────────────────┬───────────────────────────────────────────────┘
+                                    │
+                                    ▼ 
+         (Transformações, PySpark Serverless & MERGE Idempotente)
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ Camada 2_silver (Tabelas Delta Normalizadas, Enriquecidas & Séries Históricas)    │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_entidades                            │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_enderecos (com região e end. compl.) │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.tbl_hierarquia                           │
+│ ├── Tabela Delta: lakehouse_iti.2_silver.stg_silver_numeros (staging tipado)      │
+│ └── Tabela Delta: lakehouse_iti.2_silver.tbl_silver_numeros (Cluster By Ano/Flag) │
+└───────────────────────────────────┬───────────────────────────────────────────────┘
+                                    │
+                                    ▼ 
+         (Modelagem Dimensional, Liquid Clustering & CTEs Recursivas)
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ Camada 3_gold (Tabelas Delta de Consumo & Visões Analíticas Otimizadas)           │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade (visão 360º de autoridades)    │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia (subordinação direta)        │
+│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE recursiva)     │
+│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal (CLUSTER BY Ano, Tipo)  │
+│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica (CLUSTER UF)   │
+│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados (A1/A3, PF)   │
+│ ├── Fato Infra:  lakehouse_iti.3_gold.fato_infraestrutura_credenciamento          │
+│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo (Metas e Comps)        │
+└───────────────────────────────────┬───────────────────────────────────────────────┘
+                                    │
+                                    ▼ 
+             (Visualização Analítica, Tomada de Decisão & IA)
+┌───────────────────────────────────────────────────────────────────────────────────┐
+│ Camada de BI & Analytics (Databricks AI/BI Lakeview Dashboard & Genie)            │
+│ ├── Painel: Painel de Entidades ITI (deploy declarativo via Databricks Bundle)    │
+│ │   ├── KPIs, Rankings, Georreferenciamento e Séries Temporais                    │
+│ │   └── Datasets Analíticos conectados diretamente às Tabelas Gold                │
 │ └── Genie:  Espaço Semântico Conversacional (consultas analíticas em linguagem NL)│
-└──────────────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
