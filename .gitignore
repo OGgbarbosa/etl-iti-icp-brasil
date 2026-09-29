@@ -53,3 +53,4 @@ tests/teste_num.py
 *.txt
 *.json
 !*.lvdash.json
+README_copy.md
