@@ -19,24 +19,49 @@ def garantir_schema_gold():
     try:
         w.schemas.get("lakehouse_iti.3_gold")
     except NotFound:
-        print("Schema 'lakehouse_iti.3_gold' não encontrado. Criando schema...")
+        logger.info("Schema 'lakehouse_iti.3_gold' não encontrado. Criando schema...")
         w.schemas.create(
             name="3_gold", 
             catalog_name="lakehouse_iti"
         )
-        print("✅ Schema 'lakehouse_iti.3_gold' criado com sucesso!")
+        logger.info("✅ Schema 'lakehouse_iti.3_gold' criado com sucesso!")
         return w, target_warehouse_id
     else:
-        print("✅ Schema 'lakehouse_iti.3_gold' já existe!")
+        logger.info("✅ Schema 'lakehouse_iti.3_gold' já existe!")
         return w, target_warehouse_id
 
-def upload_gold_entidades():
-    w, warehouse_id = garantir_schema_gold()
+
+def executar_statement_delta(w, warehouse_id: str, sql: str, tabela_destino: str):
+    """Executa um statement SQL no Databricks SQL Warehouse com tratamento de erro e validação de status."""
+    logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino)
+    try:
+        resposta = w.statement_execution.execute_statement(
+            warehouse_id=warehouse_id,
+            statement=sql,
+            wait_timeout="50s",
+        )
+    except Exception as e:
+        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
+        raise
+
+    estado = resposta.status.state if resposta.status else None
+    if not estado or estado.value != "SUCCEEDED":
+        erro_msg = (
+            resposta.status.error.message 
+            if (resposta.status and resposta.status.error) 
+            else f"Status final inválido: {estado}"
+        )
+        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino, erro_msg)
+        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino}': {erro_msg}")
+
+    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino)
+
+
+def upload_gold_entidades(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        return
+        w, warehouse_id = garantir_schema_gold()
 
     tabela_destino_entidades = "lakehouse_iti.3_gold.dim_entidade"
-    print(f"Criando/atualizando tabela Delta: {tabela_destino_entidades}...")
 
     sql_statement = """
     CREATE OR REPLACE TABLE lakehouse_iti.3_gold.dim_entidade AS
@@ -61,28 +86,14 @@ def upload_gold_entidades():
         LEFT JOIN lakehouse_iti.`2_silver`.tbl_enderecos b
             ON a.id_entidade = b.id_entidade
     """
+    executar_statement_delta(w, warehouse_id, sql_statement, tabela_destino_entidades)
 
-    resposta = w.statement_execution.execute_statement(
-        warehouse_id=warehouse_id,
-        statement=sql_statement,
-        wait_timeout="50s",
-    )
 
-    estado = resposta.status.state if resposta.status else None
-    if estado and estado.value in ["FAILED", "CANCELED", "CLOSED"]:
-        erro_msg = resposta.status.error.message if resposta.status.error else "Erro desconhecido"
-        print(f"❌ Falha ao criar tabela: {erro_msg}")
-        return
-
-    print("✅ Tabela Gold 'lakehouse_iti.3_gold.dim_entidade' criada com sucesso!")
-
-def upload_gold_hierarquia():
-    w, warehouse_id = garantir_schema_gold()
+def upload_gold_hierarquia(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        return
+        w, warehouse_id = garantir_schema_gold()
 
     tabela_destino_hierarquia = "lakehouse_iti.3_gold.dim_hierarquia"
-    print(f"🔄️ Criando/atualizando tabela Delta: {tabela_destino_hierarquia}...")
 
     sql = """
     CREATE OR REPLACE TABLE lakehouse_iti.3_gold.dim_hierarquia AS
@@ -94,28 +105,14 @@ def upload_gold_hierarquia():
     
     FROM lakehouse_iti.`2_silver`.tbl_hierarquia a
     """
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_hierarquia)
 
-    resposta = w.statement_execution.execute_statement(
-        warehouse_id=warehouse_id,
-        statement=sql,
-        wait_timeout="50s",
-    )
 
-    estado = resposta.status.state if resposta.status else None
-    if estado and estado.value in ["FAILED", "CANCELED", "CLOSED"]:
-        erro_msg = resposta.status.error.message if resposta.status.error else "Erro desconhecido"
-        print(f"❌ Falha ao criar tabela: {erro_msg}")
-        return
-
-    print("✅ Tabela Gold 'lakehouse_iti.3_gold.dim_hierarquia' criada com sucesso!")
-    
-def upload_gold_metricas_entidades():
-    w, warehouse_id = garantir_schema_gold()
+def upload_gold_metricas_entidades(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        return
+        w, warehouse_id = garantir_schema_gold()
 
     tabela_destino_metricas = "lakehouse_iti.3_gold.fato_metricas_entidades"
-    print(f"Criando/atualizando tabela Delta: {tabela_destino_metricas}...")
 
     sql = """
     CREATE OR REPLACE TABLE lakehouse_iti.3_gold.fato_metricas_entidades AS
@@ -159,30 +156,14 @@ def upload_gold_metricas_entidades():
         ,c.uf
         ,c.regiao
     """
-
-    resposta = w.statement_execution.execute_statement(
-        warehouse_id=warehouse_id,
-        statement=sql,
-        wait_timeout="50s",
-    )
-
-    estado = resposta.status.state if resposta.status else None
-    if estado and estado.value in ["FAILED", "CANCELED", "CLOSED"]:
-        erro_msg = resposta.status.error.message if resposta.status.error else "Erro desconhecido"
-        print(f"❌ Falha ao criar tabela: {erro_msg}")
-        return
-
-    print("✅ Tabela Gold 'lakehouse_iti.3_gold.fato_metricas_entidades' criada com sucesso!")
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_metricas)
 
 
-def upload_gold_fato_emissao_mensal():
-    w, warehouse_id = garantir_schema_gold()
+def upload_gold_fato_emissao_mensal(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        logger.error("❌ WorkspaceClient ou Warehouse ID indisponíveis.")
-        raise RuntimeError("SQL Warehouse não configurado para execução Gold.")
+        w, warehouse_id = garantir_schema_gold()
 
     tabela_destino_fato_emissao = "lakehouse_iti.3_gold.fato_emissao_mensal"
-    logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino_fato_emissao)
 
     sql = """
         CREATE OR REPLACE TABLE `lakehouse_iti`.`3_gold`.`fato_emissao_mensal`
@@ -207,36 +188,14 @@ def upload_gold_fato_emissao_mensal():
         FROM `lakehouse_iti`.`2_silver`.`tbl_silver_numeros`
         WHERE DS_SUBORIGEM = 'CTE_CER'
         """
-    try:
-        resposta = w.statement_execution.execute_statement(
-            warehouse_id=warehouse_id,
-            statement=sql,
-            wait_timeout="50s",
-        )
-    except Exception as e:
-        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
-        raise
-    
-    estado = resposta.status.state if resposta.status else None
-    if not estado or estado.value != "SUCCEEDED":
-        erro_msg = (
-            resposta.status.error.message 
-            if (resposta.status and resposta.status.error) 
-            else f"Status final inválido: {estado}"
-        )
-        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino_fato_emissao, erro_msg)
-        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino_fato_emissao}': {erro_msg}")
-    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino_fato_emissao)
-    
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_fato_emissao)
 
-def upload_gold_fato_distribuicao_geografica():
-    w, warehouse_id = garantir_schema_gold()
+
+def upload_gold_fato_distribuicao_geografica(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        logger.error("❌ WorkspaceClient ou Warehouse ID indisponíveis.")
-        raise RuntimeError("SQL Warehouse não configurado para execução Gold.")
+        w, warehouse_id = garantir_schema_gold()
 
     tabela_destino_distribuicao = "lakehouse_iti.3_gold.fato_distribuicao_geografica"
-    logger.info("Criando/atualizando tabela Delta: %s...", tabela_destino_distribuicao)
 
     sql = """
     CREATE OR REPLACE TABLE `lakehouse_iti`.`3_gold`.`fato_distribuicao_geografica`
@@ -263,37 +222,14 @@ def upload_gold_fato_distribuicao_geografica():
     FROM `lakehouse_iti`.`2_silver`.`tbl_silver_numeros`
     WHERE DS_SUBORIGEM = 'CTE_REG'
         """
-    try:
-        resposta = w.statement_execution.execute_statement(
-            warehouse_id=warehouse_id,
-            statement=sql,
-            wait_timeout="50s",
-        )
-    except Exception as e:
-        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
-        raise
-    
-    estado = resposta.status.state if resposta.status else None
-    if not estado or estado.value != "SUCCEEDED":
-        erro_msg = (
-            resposta.status.error.message 
-            if (resposta.status and resposta.status.error) 
-            else f"Status final inválido: {estado}"
-        )
-        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino_distribuicao, erro_msg)
-        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino_distribuicao}': {erro_msg}")
-    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino_distribuicao)
-        
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_distribuicao)
 
-def upload_gold_fato_segmentacao_certificados():
-    w, warehouse_id = garantir_schema_gold()
+
+def upload_gold_fato_segmentacao_certificados(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        logger.error("❌ WorkspaceClient ou Warehouse ID indisponíveis.")
-        raise RuntimeError("SQL Warehouse não configurado para execução Gold.")
+        w, warehouse_id = garantir_schema_gold()
 
-    
     tabela_destino_segmentacao = "lakehouse_iti.3_gold.fato_segmentacao_certificados"
-    logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino_segmentacao)
 
     sql = """
     CREATE OR REPLACE TABLE `lakehouse_iti`.`3_gold`.`fato_segmentacao_certificados`
@@ -330,39 +266,15 @@ def upload_gold_fato_segmentacao_certificados():
         ,current_timestamp() AS DT_CARGA_DW
     FROM `lakehouse_iti`.`2_silver`.`tbl_silver_numeros` 
     WHERE DS_SUBORIGEM = 'CTE_DIS'
-
         """
-    try:
-        resposta = w.statement_execution.execute_statement(
-            warehouse_id=warehouse_id,
-            statement=sql,
-            wait_timeout="50s",
-        )
-    except Exception as e:
-        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
-        raise
-    
-    estado = resposta.status.state if resposta.status else None
-    if not estado or estado.value != "SUCCEEDED":
-        erro_msg = (
-            resposta.status.error.message 
-            if (resposta.status and resposta.status.error) 
-            else f"Status final inválido: {estado}"
-        )
-        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino_segmentacao, erro_msg)
-        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino_segmentacao}': {erro_msg}")
-    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino_segmentacao)
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_segmentacao)
 
 
-def upload_gold_fato_infraestrutura_credenciamento():
-    w, warehouse_id = garantir_schema_gold()
+def upload_gold_fato_infraestrutura_credenciamento(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        logger.error("❌ WorkspaceClient ou Warehouse ID indisponíveis.")
-        raise RuntimeError("SQL Warehouse não configurado para execução Gold.")
+        w, warehouse_id = garantir_schema_gold()
 
-    
     tabela_destino_credenciamento = "lakehouse_iti.3_gold.fato_infraestrutura_credenciamento"
-    logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino_credenciamento)
 
     sql = """
     CREATE OR REPLACE TABLE `lakehouse_iti`.`3_gold`.`fato_infraestrutura_credenciamento`
@@ -379,38 +291,14 @@ def upload_gold_fato_infraestrutura_credenciamento():
     FROM `lakehouse_iti`.`2_silver`.`tbl_silver_numeros` 
     WHERE DS_FLAG = 'infCREDENCIAMENTO_AR'
         """
-
-    try:
-        resposta = w.statement_execution.execute_statement(
-            warehouse_id=warehouse_id,
-            statement=sql,
-            wait_timeout="50s",
-        )
-    except Exception as e:
-        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
-        raise
-    
-    estado = resposta.status.state if resposta.status else None
-    if not estado or estado.value != "SUCCEEDED":
-        erro_msg = (
-            resposta.status.error.message 
-            if (resposta.status and resposta.status.error) 
-            else f"Status final inválido: {estado}"
-        )
-        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino_credenciamento, erro_msg)
-        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino_credenciamento}': {erro_msg}")
-    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino_credenciamento)
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_credenciamento)
 
 
-def upload_gold_kpi_resumo_executivo():
-    w, warehouse_id = garantir_schema_gold()
+def upload_gold_kpi_resumo_executivo(w=None, warehouse_id=None):
     if not w or not warehouse_id:
-        logger.error("❌ WorkspaceClient ou Warehouse ID indisponíveis.")
-        raise RuntimeError("SQL Warehouse não configurado para execução Gold.")
+        w, warehouse_id = garantir_schema_gold()
 
-    
     tabela_destino_kpi_resumo_executivo = "lakehouse_iti.3_gold.kpi_resumo_executivo"
-    logger.info("🔄️ Criando/atualizando tabela Delta: %s...", tabela_destino_kpi_resumo_executivo)
 
     sql = """
     CREATE OR REPLACE TABLE `lakehouse_iti`.`3_gold`.`kpi_resumo_executivo`
@@ -448,36 +336,24 @@ def upload_gold_kpi_resumo_executivo():
     WHERE DS_SUBORIGEM = 'CTE_INF'
     AND DS_FLAG <> 'infCREDENCIAMENTO_AR'
         """
+    executar_statement_delta(w, warehouse_id, sql, tabela_destino_kpi_resumo_executivo)
 
-    try:
-        resposta = w.statement_execution.execute_statement(
-            warehouse_id=warehouse_id,
-            statement=sql,
-            wait_timeout="50s",
-        )
-    except Exception as e:
-        logger.error("❌ Erro de comunicação com o SQL Warehouse: %s", e)
-        raise
-    
-    estado = resposta.status.state if resposta.status else None
-    if not estado or estado.value != "SUCCEEDED":
-        erro_msg = (
-            resposta.status.error.message 
-            if (resposta.status and resposta.status.error) 
-            else f"Status final inválido: {estado}"
-        )
-        logger.error("❌ Falha ao criar tabela '%s': %s", tabela_destino_kpi_resumo_executivo, erro_msg)
-        raise RuntimeError(f"Falha ao criar tabela '{tabela_destino_kpi_resumo_executivo}': {erro_msg}")
-    logger.info("✅ Tabela Gold '%s' criada com sucesso!", tabela_destino_kpi_resumo_executivo)
+
+def upload_gold_todas(w=None, warehouse_id=None):
+    """Executa a criação/atualização de todas as tabelas Gold."""
+    if not w or not warehouse_id:
+        w, warehouse_id = garantir_schema_gold()
+
+    upload_gold_entidades(w, warehouse_id)
+    upload_gold_hierarquia(w, warehouse_id)
+    upload_gold_metricas_entidades(w, warehouse_id)
+
+    upload_gold_fato_emissao_mensal(w, warehouse_id)
+    upload_gold_fato_distribuicao_geografica(w, warehouse_id)
+    upload_gold_fato_segmentacao_certificados(w, warehouse_id)
+    upload_gold_fato_infraestrutura_credenciamento(w, warehouse_id)
+    upload_gold_kpi_resumo_executivo(w, warehouse_id)
 
 
 if __name__ == '__main__':
-    upload_gold_entidades()
-    upload_gold_hierarquia()
-    upload_gold_metricas_entidades()
-
-    upload_gold_fato_emissao_mensal()
-    upload_gold_fato_distribuicao_geografica()
-    upload_gold_fato_segmentacao_certificados()
-    upload_gold_fato_infraestrutura_credenciamento()
-    upload_gold_kpi_resumo_executivo()
+    upload_gold_todas()
