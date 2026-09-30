@@ -13,4 +13,6 @@ resources:
         - "lakehouse_iti.3_gold.fato_emissao_mensal"
         - "lakehouse_iti.3_gold.fato_distribuicao_geografica"
         - "lakehouse_iti.3_gold.fato_segmentacao_certificados"
+        - "lakehouse_iti.3_gold.fato_infraestrutura_credenciamento"
         - "lakehouse_iti.3_gold.kpi_resumo_executivo"
+        - "lakehouse_iti.3_gold.dim_inteligencia_mercado"

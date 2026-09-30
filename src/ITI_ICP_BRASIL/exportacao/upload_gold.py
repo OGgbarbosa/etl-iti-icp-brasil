@@ -3,6 +3,7 @@ from databricks.sdk.errors import NotFound
 
 from ITI_ICP_BRASIL.config.config import obter_warehouse_id, warehouse_id
 from ITI_ICP_BRASIL.config.logger import get_logger
+from ITI_ICP_BRASIL.processamento.inteligencia_externa import run_inteligencia_externa
 
 logger = get_logger(__name__)
 
@@ -353,6 +354,7 @@ def upload_gold(w=None, warehouse_id=None):
     upload_gold_fato_segmentacao_certificados(w, warehouse_id)
     upload_gold_fato_infraestrutura_credenciamento(w, warehouse_id)
     upload_gold_kpi_resumo_executivo(w, warehouse_id)
+    run_inteligencia_externa(w, warehouse_id)
 
 
 if __name__ == '__main__':

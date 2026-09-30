@@ -47,3 +47,28 @@ COMMENT 'Quantidade total de Autoridades Certificadoras de 1º Nível vinculadas
 
 ALTER TABLE lakehouse_iti.3_gold.fato_metricas_entidades ALTER COLUMN NR_AGREGADOS_AC_NIVEL_2 
 COMMENT 'Quantidade total de Autoridades Certificadoras de 2º Nível vinculadas abaixo desta autoridade.';
+
+
+-- =====================================================================
+-- 4. Dimensão Inteligência de Mercado e Fontes Externas
+-- =====================================================================
+COMMENT ON TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado IS 
+'Dimensão de inteligência externa e mercado. Contém notícias, artigos técnicos, notas regulatórias e posicionamentos institucionais coletados dos principais portais do setor (ANCD, Crypto ID, ABRID, AR Federal, Convergência Digital).';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN NM_FONTE 
+COMMENT 'Nome do portal ou entidade representativa de origem: ANCD, CRYPTO ID, ABRID, AR FEDERAL ou CONVERGENCIA DIGITAL.';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN DS_TITULO 
+COMMENT 'Manchete ou título principal da publicação externa.';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN DS_RESUMO 
+COMMENT 'Texto resumido do conteúdo da publicação para consulta semântica e contextualização analítica.';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN DS_URL_ORIGEM 
+COMMENT 'URL permanente da matéria original publicada para citação direta de fontes confiáveis.';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN DT_PUBLICACAO 
+COMMENT 'Data e hora em que a publicação foi veiculada no portal de origem.';
+
+ALTER TABLE lakehouse_iti.3_gold.dim_inteligencia_mercado ALTER COLUMN DS_TAGS 
+COMMENT 'Termos-chave do ecossistema identificados no conteúdo (ex: ICP-Brasil, DREX, Certificado Digital, Biometria, Cibersegurança).';
