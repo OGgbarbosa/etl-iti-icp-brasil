@@ -2,6 +2,7 @@ resources:
   jobs:
     ITI_ICP_BRASIL_job:
       name: ITI_ICP_BRASIL_job
+      max_concurrent_runs: 1
       parameters:
         - name: warehouse_id
           default: ${var.warehouse_id}
