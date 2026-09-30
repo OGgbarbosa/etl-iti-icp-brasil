@@ -1,0 +1,18 @@
+resources:
+  genie_spaces:
+    iti_genie_space:
+      name: "Genie - Inteligência Analítica ICP-Brasil"
+      description: "Espaço semântico conversacional para exploração de rede credenciada e séries históricas de certificados digitais do ITI."
+      warehouse_id: ${var.warehouse_id}
+      default_catalog: "lakehouse_iti"
+      default_schema: "3_gold"
+      tables:
+        - "lakehouse_iti.3_gold.dim_entidade"
+        - "lakehouse_iti.3_gold.dim_hierarquia"
+        - "lakehouse_iti.3_gold.fato_metricas_entidades"
+        - "lakehouse_iti.3_gold.fato_emissao_mensal"
+        - "lakehouse_iti.3_gold.fato_distribuicao_geografica"
+        - "lakehouse_iti.3_gold.fato_segmentacao_certificados"
+        - "lakehouse_iti.3_gold.fato_infraestrutura_credenciamento"
+        - "lakehouse_iti.3_gold.kpi_resumo_executivo"
+        - "lakehouse_iti.3_gold.dim_inteligencia_mercado"
