@@ -120,19 +120,19 @@ A arquitetura de dados segue o padrão **Medalhão** no **Databricks Lakehouse**
 └───────────────────┬──────────────────────┘                     │
                     │                                            │
                     ▼                                            │
-       (Modelagem Dimensional Star Schema & MERGE Idempotente) ◀─┘
-┌────────────────────────────────────────────────────────────────────────┐
-│ Camada 3_gold (Tabelas Delta Otimizadas com Liquid Clustering)         │
-│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade                     │
-│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia                   │
-│ ├── Dimensão:    lakehouse_iti.3_gold.dim_inteligencia_mercado 🌟      │
-│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE)    │
-│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal              │
-│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica     │
-│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados    │
+       (Modelagem Dimensional Star Schema & MERGE Idempotente) ◀┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Camada 3_gold (Tabelas Delta Otimizadas com Liquid Clustering)          │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_entidade                      │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_hierarquia                    │
+│ ├── Dimensão:    lakehouse_iti.3_gold.dim_inteligencia_mercado          │
+│ ├── Fato Cadeia: lakehouse_iti.3_gold.fato_metricas_entidades (CTE)     │
+│ ├── Fato Séries: lakehouse_iti.3_gold.fato_emissao_mensal               │
+│ ├── Fato Mapa:   lakehouse_iti.3_gold.fato_distribuicao_geografica      │
+│ ├── Fato Corte:  lakehouse_iti.3_gold.fato_segmentacao_certificados     │
 │ ├── Fato Infra:  lakehouse_iti.3_gold.fato_infraestrutura_credenciamento│
-│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo             │
-└───────────────────────────────────┬────────────────────────────────────┘
+│ └── KPI Resumo:  lakehouse_iti.3_gold.kpi_resumo_executivo              │
+└───────────────────────────────────┬─────────────────────────────────────┘
                                     │
                     ┌───────────────┴───────────────┐
                     ▼                               ▼
