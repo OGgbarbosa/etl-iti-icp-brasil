@@ -224,8 +224,8 @@ def implantar_genie_space(
 
     serialized_payload = gerar_payload_serialized_space()
 
-    # Salva também localmente em resources/genie para controle de versão
-    json_path = Path(__file__).parent / "genie_space_definition.json"
+    # Salva também localmente em resources/genie/config para controle de versão
+    json_path = Path(__file__).resolve().parent.parent / "config" / "genie_space_definition.json"
     json_path.write_text(serialized_payload, encoding="utf-8")
     logger.info("Definição do espaço salva localmente em: %s", json_path)
 
@@ -254,6 +254,14 @@ def implantar_genie_space(
 
 
 if __name__ == "__main__":
+    import sys
+
+    if "--with-comments" in sys.argv:
+        from resources.genie.scripts.apply_comments import aplicar_comentarios_genie
+
+        logger.info("Aplicando comentários semânticos no Unity Catalog antes do deploy...")
+        aplicar_comentarios_genie()
+
     sid = implantar_genie_space()
     print("\n🎉 Genie Space pronto para uso!")
     print(f"Space ID: {sid}")

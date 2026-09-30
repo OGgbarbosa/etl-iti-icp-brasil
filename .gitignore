@@ -53,5 +53,5 @@ tests/teste_num.py
 *.txt
 *.json
 !*.lvdash.json
-!resources/genie/*.json
+!resources/genie/**/*.json
 README_copy.md

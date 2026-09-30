@@ -16,7 +16,7 @@ def aplicar_comentarios_genie():
         logger.error("❌ Nenhum SQL Warehouse configurado ou disponível no workspace.")
         raise RuntimeError("SQL Warehouse não configurado para execução de comentários.")
 
-    sql_file = Path(__file__).parent / "comments_gold_genie.sql"
+    sql_file = Path(__file__).resolve().parent.parent / "sql" / "comments_gold_genie.sql"
     sql_content = sql_file.read_text(encoding="utf-8")
 
     # Divide os comandos por ponto e vírgula

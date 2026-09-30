@@ -16,17 +16,25 @@ O Genie atua como o analista conversacional do Lakehouse, permitindo que usuári
 
 ---
 
-## 📂 2. Estrutura de Arquivos do Módulo
+## 📂 2. Estrutura Organizada em Subpastas
 
 ```text
 resources/genie/
-├── README.md                     # Guia arquitetural e operacional do módulo Genie (este arquivo)
-├── ITI_ICP_BRASIL_genie.yml      # Especificação declarativa do recurso Genie Space (DAB)
-├── REGRAS_NEGOCIO_GENIE.md       # Diretrizes semânticas, glossário do ITI e regras de negócio
-├── comments_gold_genie.sql       # 38 instruções SQL de comentários de tabelas e colunas (Unity Catalog)
-├── apply_comments.py             # Script de aplicação em lote dos comentários via Statement Execution API
-├── deploy_genie.py               # Automação de deploy/atualização contínua do espaço via Databricks SDK
-└── genie_space_definition.json   # Exportação serializada versionada (JSON v2) da configuração do espaço
+├── README.md                      # Guia arquitetural e operacional do módulo (este arquivo)
+│
+├── config/                        # Especificações e definições declarativas do espaço
+│   ├── ITI_ICP_BRASIL_genie.yml   # Definição do recurso Genie Space (DAB)
+│   └── genie_space_definition.json # Exportação serializada versionada (JSON v2) do espaço
+│
+├── docs/                          # Manuais de negócio e diretrizes semânticas
+│   └── REGRAS_NEGOCIO_GENIE.md    # Glossário ITI, filtros obrigatórios, padrões SQL e inteligência setorial
+│
+├── sql/                           # Scripts SQL de governança do Unity Catalog
+│   └── comments_gold_genie.sql    # 38 instruções DDL de comentários em tabelas e colunas Gold
+│
+└── scripts/                       # Automação de deploy e aplicação de governança
+    ├── deploy_genie.py            # Script idempotente de deploy/atualização contínua via Databricks SDK
+    └── apply_comments.py          # Executor em lote dos comentários via Statement Execution API
 ```
 
 ---
@@ -55,15 +63,19 @@ O espaço consome exclusivamente dados curados e auditados da camada **Gold (`la
 Para criar ou atualizar o espaço no workspace com as instruções, tabelas e perguntas de exemplo mais recentes:
 ```powershell
 $env:PYTHONPATH="src"
-.\.venv\Scripts\python.exe resources/genie/deploy_genie.py
+.\.venv\Scripts\python.exe resources/genie/scripts/deploy_genie.py
 ```
-> O script é **idempotente**: localiza o espaço existente pelo título e atualiza o payload serializado, evitando duplicidades no workspace.
+> O script é **idempotente**: localiza o espaço existente pelo título e atualiza o payload serializado, evitando duplicidades no workspace.  
+> **Dica**: Use o parâmetro opcional `--with-comments` para aplicar os comentários semânticos e implantar o Genie em uma única etapa:
+> ```powershell
+> .\.venv\Scripts\python.exe resources/genie/scripts/deploy_genie.py --with-comments
+> ```
 
 ### 4.2. Aplicação de Comentários no Unity Catalog
 Para reaplicar ou sincronizar todos os 38 comentários semânticos de tabelas e colunas no Unity Catalog:
 ```powershell
 $env:PYTHONPATH="src"
-.\.venv\Scripts\python.exe resources/genie/apply_comments.py
+.\.venv\Scripts\python.exe resources/genie/scripts/apply_comments.py
 ```
 
 ### 4.3. Coleta de Inteligência Externa (RSS)

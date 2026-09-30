@@ -3,33 +3,33 @@
   "config": {
     "sample_questions": [
       {
-        "id": "7d8049ad939841118d61014b6a389c02",
-        "question": [
-          "Quantas Autoridades de Registro (ARs) credenciadas existem em São Paulo?"
-        ]
-      },
-      {
-        "id": "93052e22fd8243da876e618d735e5906",
-        "question": [
-          "Quais as principais notícias recentes publicadas pela ANCD e Crypto ID?"
-        ]
-      },
-      {
-        "id": "a89d41276ced4bc3b4f4c019d37b5a4b",
+        "id": "167b6e6797794e569fff27dabecc7aba",
         "question": [
           "Qual o total de certificados digitais emitidos nos últimos 12 meses?"
         ]
       },
       {
-        "id": "b5db82e99a67482798c540112a3e7dda",
+        "id": "3d604f752b2c46e7b0418880da31ed2b",
         "question": [
           "Qual a proporção de emissões entre certificados A1 e A3?"
         ]
       },
       {
-        "id": "f86583368b714f809ac12ca504415756",
+        "id": "cf333c095cad4a39b811d6ebecb427da",
+        "question": [
+          "Quantas Autoridades de Registro (ARs) credenciadas existem em São Paulo?"
+        ]
+      },
+      {
+        "id": "e9700d4203684859b1e5d82696f4bd54",
         "question": [
           "Quais são as 5 maiores Autoridades Certificadoras por quantidade de ARs vinculadas?"
+        ]
+      },
+      {
+        "id": "f27ad296ad4940e1ac595b9dd0f974b8",
+        "question": [
+          "Quais as principais notícias recentes publicadas pela ANCD e Crypto ID?"
         ]
       }
     ]
@@ -68,7 +68,7 @@
   "instructions": {
     "text_instructions": [
       {
-        "id": "88ef10de50ee4cdeb5505faa4d0b745c",
+        "id": "67f678de65e748278a4acce1df092e78",
         "content": [
           "REGRAS DE NEGOCIO OBRIGATORIAS:\n1. VALORES EXATOS DE DS_TIPO (dim_entidade e fato_metricas_entidades):\n   - 'AR': Autoridade de Registro (ponta física/remota de atendimento).\n   - 'AC 1º NÍVEL': Autoridade Certificadora de 1º Nível (subordinada à AC Raiz).\n   - 'AC 2º NÍVEL': Autoridade Certificadora de 2º Nível (emite para usuários finais e vincula ARs).\n   - 'AC RAIZ': Autoridade máxima operada pelo ITI.\n   * Para Autoridades de Registro (ARs), filtre sempre por: DS_TIPO = 'AR'.\n   * Para Autoridades Certificadoras (ACs), use: DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL') ou DS_TIPO LIKE '%AC%'.\n2. ENTIDADES ATIVAS: No Lakehouse, a situacao operacional de autoridades ativas e 'CREDENCIADA'. NUNCA filtre por 'ATIVA'. Para ARs ativas/em operacao: WHERE DS_SITUACAO = 'CREDENCIADA' AND DS_TIPO = 'AR'.\n3. METRICA DE VOLUME: A coluna canonica quantitativa e 'VL_METRICA' (a coluna NR_QUANTIDADE nao existe).\n4. SERIES TEMPORAIS (fato_emissao_mensal):\n   - Novas emissoes ocorridas no mes: DS_TIPO_SERIE = 'MENSAL CORRENTE' (DS_GRANULARIDADE = 'MENSAL').\n   - Estoque cumulativo de certificados validos/ativos: DS_TIPO_SERIE = 'HISTORICO ATIVOS' (DS_GRANULARIDADE = 'ANUAL').\n   - Volume total emitido acumulado no ano: DS_TIPO_SERIE = 'HISTORICO EMITIDOS' (DS_GRANULARIDADE = 'ANUAL').\n5. TOPOLOGIA E HIERARQUIA: Para responder quais ACs tem mais ARs subordinadas ou o tamanho da cadeia de uma autoridade, utilize SEMPRE a tabela pre-agregada 'lakehouse_iti.3_gold.fato_metricas_entidades' (colunas NR_AGREGADOS_AR, NR_AGREGADOS_AC_NIVEL_1, NR_AGREGADOS_AC_NIVEL_2).\n6. CNPJs: A coluna NR_CNPJ possui exatamente 14 digitos com zeros a esquerda. Caso o usuario informe CNPJ pontuado, aplique LPAD(REGEXP_REPLACE(input, '[^0-9]', ''), 14, '0').\n7. INTELIGENCIA DE MERCADO E NOTICIAS SETORIAIS: Quando o usuario perguntar sobre noticias, fatos relevantes, posicionamento de entidades (ANCD, Crypto ID, ABRID, AR Federal, Convergencia Digital) ou contexto setorial, consulte a tabela 'lakehouse_iti.3_gold.dim_inteligencia_mercado' ou chame a funcao 'lakehouse_iti.3_gold.fn_consultar_inteligencia_setorial'."
         ]
@@ -76,25 +76,7 @@
     ],
     "example_question_sqls": [
       {
-        "id": "0dddc213f319412080efc5d6410abc66",
-        "question": [
-          "Quais são as 5 maiores Autoridades Certificadoras em número de ARs subordinadas?"
-        ],
-        "sql": [
-          "SELECT ID_ENTIDADE, DS_ENTIDADE, SG_UF, DS_TIPO, NR_AGREGADOS_AR\nFROM lakehouse_iti.3_gold.fato_metricas_entidades\nWHERE DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL') AND DS_SITUACAO = 'CREDENCIADA'\nORDER BY NR_AGREGADOS_AR DESC\nLIMIT 5;"
-        ]
-      },
-      {
-        "id": "514dd8397555448fbb7b89338c3a85ce",
-        "question": [
-          "Como está distribuída a quantidade de ARs ativas por estado?"
-        ],
-        "sql": [
-          "SELECT SG_UF, DS_REGIAO, COUNT(DISTINCT ID_ENTIDADE) AS TOTAL_ARS\nFROM lakehouse_iti.3_gold.dim_entidade\nWHERE DS_SITUACAO = 'CREDENCIADA' AND DS_TIPO = 'AR'\nGROUP BY SG_UF, DS_REGIAO\nORDER BY TOTAL_ARS DESC;"
-        ]
-      },
-      {
-        "id": "c5eca1d4ca8243758a606333dde691fb",
+        "id": "350f324ce8a94c5fb4f0be60c120ca50",
         "question": [
           "Qual foi a evolução do total de emissões de certificados mês a mês no último ano?"
         ],
@@ -103,12 +85,30 @@
         ]
       },
       {
-        "id": "f2f589fe5e7d41c3867b976959d58937",
+        "id": "a5b7d21ef87a4e32a610d51b1ab21de4",
+        "question": [
+          "Como está distribuída a quantidade de ARs ativas por estado?"
+        ],
+        "sql": [
+          "SELECT SG_UF, DS_REGIAO, COUNT(DISTINCT ID_ENTIDADE) AS TOTAL_ARS\nFROM lakehouse_iti.3_gold.dim_entidade\nWHERE DS_SITUACAO = 'CREDENCIADA' AND DS_TIPO = 'AR'\nGROUP BY SG_UF, DS_REGIAO\nORDER BY TOTAL_ARS DESC;"
+        ]
+      },
+      {
+        "id": "af5575dba37a4c7f9fcabfff5440147f",
         "question": [
           "Quais as notícias recentes sobre certificação digital e ICP-Brasil publicadas pela ANCD e Crypto ID?"
         ],
         "sql": [
           "SELECT NM_FONTE, DS_TITULO, DT_PUBLICACAO, DS_URL_ORIGEM\nFROM lakehouse_iti.3_gold.dim_inteligencia_mercado\nWHERE (LOWER(DS_TITULO) LIKE '%icp-brasil%' OR LOWER(DS_TAGS) LIKE '%icp-brasil%')\n  AND NM_FONTE IN ('ANCD', 'CRYPTO ID')\nORDER BY DT_PUBLICACAO DESC\nLIMIT 5;"
+        ]
+      },
+      {
+        "id": "fa8b1c9f43164319a9b191202a82915f",
+        "question": [
+          "Quais são as 5 maiores Autoridades Certificadoras em número de ARs subordinadas?"
+        ],
+        "sql": [
+          "SELECT ID_ENTIDADE, DS_ENTIDADE, SG_UF, DS_TIPO, NR_AGREGADOS_AR\nFROM lakehouse_iti.3_gold.fato_metricas_entidades\nWHERE DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL') AND DS_SITUACAO = 'CREDENCIADA'\nORDER BY NR_AGREGADOS_AR DESC\nLIMIT 5;"
         ]
       }
     ]
@@ -116,7 +116,7 @@
   "benchmarks": {
     "questions": [
       {
-        "id": "63854082724b43b48b5e3107ae5126da",
+        "id": "15a14db1745d4481a6446549c38b578f",
         "question": [
           "Total de certificados emitidos no mês corrente"
         ],
@@ -130,7 +130,7 @@
         ]
       },
       {
-        "id": "f1f81becac5a45d9a0ccce8e7cf0a1f9",
+        "id": "3dcfccb4fa0b4e8ea70f22f88390497d",
         "question": [
           "Quantidade de ARs credenciadas em São Paulo"
         ],
