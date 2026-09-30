@@ -7,10 +7,10 @@
 ![Ruff](https://img.shields.io/badge/Linter-Ruff-261230?logo=ruff&logoColor=white)
 ![uv](https://img.shields.io/badge/Package_Manager-uv-DE5FE9?logo=astral&logoColor=white)
 
-> 🚀 **Status do Projeto:** ✅ **Fases 1 e 2 Concluídas e Integradas no Lakehouse**  
+> 🚀 **Status do Projeto:** ✅ **Fases 1, 2 e 3 Concluídas e Integradas no Lakehouse**  
 > - **Fase 1 (Concluída):** Esteira de dados cadastrais e mestres das entidades ICP-Brasil (Extração, Normalização, PySpark Serverless, Modelagem Dimensional Star Schema e AI/BI Dashboard).  
 > - **Fase 2 (Concluída):** Ingestão e ETL analítico dos dados estatísticos do portal **ITI em Números** (volumetria agregada de emissões por UF, período, modalidade e credenciamento), com histórico cumulativo (MERGE idempotente via SHA-256) e 5 tabelas analíticas Gold otimizadas via *Liquid Clustering*.  
-> - **Fase 3 (Em Andamento):** Analytics conversacional via **Databricks Genie** e expansão dos painéis analíticos com cruzamento de infraestrutura instalada vs. demanda de mercado.
+> - **Fase 3 (Concluída):** Analytics conversacional via **Databricks Genie Space** (`Genie - Inteligência Analítica ICP-Brasil`), conectado às 9 tabelas Gold, regras semânticas calibradas no Unity Catalog e módulo de inteligência de mercado com 5 fontes setoriais externas (ANCD, Crypto ID, ABRID, AR Federal, Convergência Digital).
 
 ---
 
@@ -441,5 +441,8 @@ A esteira implementada consolida a base mestra cadastral e o histórico analíti
      - Densidade de autoridades credenciadas vs. volume demandado de certificados por estado.
      - Identificação de regiões com alta demanda e potencial desassistência de pontos de atendimento (ARs).
 
-3. **Analytics Conversacional com Databricks Genie (AI/BI):**
-   - Criação de um **Genie Space** conectado às tabelas dimensionais e métricas no Unity Catalog (`lakehouse_iti.3_gold.*`), habilitando que analistas realizem levantamentos estatísticos, análises exploratórias e geração de insights através de linguagem natural (e.g., *"Qual o crescimento anual de certificados A1 na Região Sudeste em comparação com o total de ARs ativas?"*).
+3. **Analytics Conversacional com Databricks Genie (AI/BI) — [Concluída]:**
+   - **Genie Space Implementado e Publicado:** Espaço `Genie - Inteligência Analítica ICP-Brasil` (`ID: 01f1bc8146741edaab32c05d8d67fda9`) conectado às 9 tabelas Gold no Unity Catalog (`lakehouse_iti.3_gold.*`).
+   - **Governança Semântica Refinada:** 38 comentários de tabelas e colunas, regras de negócio estritas (`DS_SITUACAO = 'CREDENCIADA'`, `VL_METRICA`, tipos `'AR'`, `'AC 1º NÍVEL'`, `'AC 2º NÍVEL'`, `'AC RAIZ'`), benchmarks e exemplos SQL canônicos.
+   - **Inteligência Setorial Externa:** Ingestão contínua de notícias e artigos regulatórios de 5 portais (ANCD, Crypto ID, ABRID, AR Federal e Convergência Digital) na tabela `dim_inteligencia_mercado` e função de catálogo `fn_consultar_inteligencia_setorial`.
+   - **Documentação e Automação:** Guia operacional completo em [`resources/genie/README.md`](file:///c:/Users/Gabriel%20Barbosa/OneDrive/Documentos/PYTON/icp_brasil/resources/genie/README.md) e scripts de deploy idempotente (`deploy_genie.py`) e aplicação de comentários (`apply_comments.py`).
