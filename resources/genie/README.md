@@ -9,10 +9,10 @@ O Genie atua como o analista conversacional do Lakehouse, permitindo que usuári
 ## 📌 1. Identificadores do Espaço no Databricks
 
 * **Nome do Espaço**: `Genie - Inteligência Analítica ICP-Brasil`
-* **Space ID**: `01f1bc8146741edaab32c05d8d67fda9`
-* **SQL Warehouse ID**: `e054bea1d2fa6e66` (Serverless / Auto-start)
+* **Space ID**: `<genie_space_id>` *(gerado automaticamente no deploy via Databricks SDK)*
+* **SQL Warehouse ID**: `${var.warehouse_id}` *(parametrizado via Databricks Asset Bundles / Databricks SQL)*
 * **Catálogo & Schema Padrão**: `lakehouse_iti.3_gold`
-* **Status**: 🟢 **Ativo, implantado e validado via Genie API**
+* **Status**: 🟢 **Ativo e implantado via script de automação**
 
 ---
 

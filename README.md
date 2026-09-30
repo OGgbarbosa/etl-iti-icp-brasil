@@ -442,7 +442,7 @@ A esteira implementada consolida a base mestra cadastral e o histórico analíti
      - Identificação de regiões com alta demanda e potencial desassistência de pontos de atendimento (ARs).
 
 3. **Analytics Conversacional com Databricks Genie (AI/BI) — [Concluída]:**
-   - **Genie Space Implementado e Publicado:** Espaço `Genie - Inteligência Analítica ICP-Brasil` (`ID: 01f1bc8146741edaab32c05d8d67fda9`) conectado às 9 tabelas Gold no Unity Catalog (`lakehouse_iti.3_gold.*`).
+   - **Genie Space Implementado e Publicado:** Espaço `Genie - Inteligência Analítica ICP-Brasil` conectado às 9 tabelas Gold no Unity Catalog (`lakehouse_iti.3_gold.*`).
    - **Governança Semântica Refinada:** 38 comentários de tabelas e colunas, regras de negócio estritas (`DS_SITUACAO = 'CREDENCIADA'`, `VL_METRICA`, tipos `'AR'`, `'AC 1º NÍVEL'`, `'AC 2º NÍVEL'`, `'AC RAIZ'`), benchmarks e exemplos SQL canônicos.
    - **Inteligência Setorial Externa:** Ingestão contínua de notícias e artigos regulatórios de 5 portais (ANCD, Crypto ID, ABRID, AR Federal e Convergência Digital) na tabela `dim_inteligencia_mercado` e função de catálogo `fn_consultar_inteligencia_setorial`.
    - **Documentação e Automação:** Guia operacional completo em [`resources/genie/README.md`](file:///c:/Users/Gabriel%20Barbosa/OneDrive/Documentos/PYTON/icp_brasil/resources/genie/README.md) e scripts de deploy idempotente (`deploy_genie.py`) e aplicação de comentários (`apply_comments.py`).
