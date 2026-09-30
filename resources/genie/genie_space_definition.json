@@ -1,0 +1,148 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {
+        "id": "7d8049ad939841118d61014b6a389c02",
+        "question": [
+          "Quantas Autoridades de Registro (ARs) credenciadas existem em São Paulo?"
+        ]
+      },
+      {
+        "id": "93052e22fd8243da876e618d735e5906",
+        "question": [
+          "Quais as principais notícias recentes publicadas pela ANCD e Crypto ID?"
+        ]
+      },
+      {
+        "id": "a89d41276ced4bc3b4f4c019d37b5a4b",
+        "question": [
+          "Qual o total de certificados digitais emitidos nos últimos 12 meses?"
+        ]
+      },
+      {
+        "id": "b5db82e99a67482798c540112a3e7dda",
+        "question": [
+          "Qual a proporção de emissões entre certificados A1 e A3?"
+        ]
+      },
+      {
+        "id": "f86583368b714f809ac12ca504415756",
+        "question": [
+          "Quais são as 5 maiores Autoridades Certificadoras por quantidade de ARs vinculadas?"
+        ]
+      }
+    ]
+  },
+  "data_sources": {
+    "tables": [
+      {
+        "identifier": "lakehouse_iti.3_gold.dim_entidade"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.dim_hierarquia"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.dim_inteligencia_mercado"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.fato_distribuicao_geografica"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.fato_emissao_mensal"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.fato_infraestrutura_credenciamento"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.fato_metricas_entidades"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.fato_segmentacao_certificados"
+      },
+      {
+        "identifier": "lakehouse_iti.3_gold.kpi_resumo_executivo"
+      }
+    ]
+  },
+  "instructions": {
+    "text_instructions": [
+      {
+        "id": "88ef10de50ee4cdeb5505faa4d0b745c",
+        "content": [
+          "REGRAS DE NEGOCIO OBRIGATORIAS:\n1. VALORES EXATOS DE DS_TIPO (dim_entidade e fato_metricas_entidades):\n   - 'AR': Autoridade de Registro (ponta física/remota de atendimento).\n   - 'AC 1º NÍVEL': Autoridade Certificadora de 1º Nível (subordinada à AC Raiz).\n   - 'AC 2º NÍVEL': Autoridade Certificadora de 2º Nível (emite para usuários finais e vincula ARs).\n   - 'AC RAIZ': Autoridade máxima operada pelo ITI.\n   * Para Autoridades de Registro (ARs), filtre sempre por: DS_TIPO = 'AR'.\n   * Para Autoridades Certificadoras (ACs), use: DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL') ou DS_TIPO LIKE '%AC%'.\n2. ENTIDADES ATIVAS: No Lakehouse, a situacao operacional de autoridades ativas e 'CREDENCIADA'. NUNCA filtre por 'ATIVA'. Para ARs ativas/em operacao: WHERE DS_SITUACAO = 'CREDENCIADA' AND DS_TIPO = 'AR'.\n3. METRICA DE VOLUME: A coluna canonica quantitativa e 'VL_METRICA' (a coluna NR_QUANTIDADE nao existe).\n4. SERIES TEMPORAIS (fato_emissao_mensal):\n   - Novas emissoes ocorridas no mes: DS_TIPO_SERIE = 'MENSAL CORRENTE' (DS_GRANULARIDADE = 'MENSAL').\n   - Estoque cumulativo de certificados validos/ativos: DS_TIPO_SERIE = 'HISTORICO ATIVOS' (DS_GRANULARIDADE = 'ANUAL').\n   - Volume total emitido acumulado no ano: DS_TIPO_SERIE = 'HISTORICO EMITIDOS' (DS_GRANULARIDADE = 'ANUAL').\n5. TOPOLOGIA E HIERARQUIA: Para responder quais ACs tem mais ARs subordinadas ou o tamanho da cadeia de uma autoridade, utilize SEMPRE a tabela pre-agregada 'lakehouse_iti.3_gold.fato_metricas_entidades' (colunas NR_AGREGADOS_AR, NR_AGREGADOS_AC_NIVEL_1, NR_AGREGADOS_AC_NIVEL_2).\n6. CNPJs: A coluna NR_CNPJ possui exatamente 14 digitos com zeros a esquerda. Caso o usuario informe CNPJ pontuado, aplique LPAD(REGEXP_REPLACE(input, '[^0-9]', ''), 14, '0').\n7. INTELIGENCIA DE MERCADO E NOTICIAS SETORIAIS: Quando o usuario perguntar sobre noticias, fatos relevantes, posicionamento de entidades (ANCD, Crypto ID, ABRID, AR Federal, Convergencia Digital) ou contexto setorial, consulte a tabela 'lakehouse_iti.3_gold.dim_inteligencia_mercado' ou chame a funcao 'lakehouse_iti.3_gold.fn_consultar_inteligencia_setorial'."
+        ]
+      }
+    ],
+    "example_question_sqls": [
+      {
+        "id": "0dddc213f319412080efc5d6410abc66",
+        "question": [
+          "Quais são as 5 maiores Autoridades Certificadoras em número de ARs subordinadas?"
+        ],
+        "sql": [
+          "SELECT ID_ENTIDADE, DS_ENTIDADE, SG_UF, DS_TIPO, NR_AGREGADOS_AR\nFROM lakehouse_iti.3_gold.fato_metricas_entidades\nWHERE DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL') AND DS_SITUACAO = 'CREDENCIADA'\nORDER BY NR_AGREGADOS_AR DESC\nLIMIT 5;"
+        ]
+      },
+      {
+        "id": "514dd8397555448fbb7b89338c3a85ce",
+        "question": [
+          "Como está distribuída a quantidade de ARs ativas por estado?"
+        ],
+        "sql": [
+          "SELECT SG_UF, DS_REGIAO, COUNT(DISTINCT ID_ENTIDADE) AS TOTAL_ARS\nFROM lakehouse_iti.3_gold.dim_entidade\nWHERE DS_SITUACAO = 'CREDENCIADA' AND DS_TIPO = 'AR'\nGROUP BY SG_UF, DS_REGIAO\nORDER BY TOTAL_ARS DESC;"
+        ]
+      },
+      {
+        "id": "c5eca1d4ca8243758a606333dde691fb",
+        "question": [
+          "Qual foi a evolução do total de emissões de certificados mês a mês no último ano?"
+        ],
+        "sql": [
+          "SELECT DT_ANO, DT_MES_ANO, SUM(VL_METRICA) AS TOTAL_EMISSOES\nFROM lakehouse_iti.3_gold.fato_emissao_mensal\nWHERE DS_TIPO_SERIE = 'MENSAL CORRENTE'\nGROUP BY DT_ANO, DT_MES_ANO\nORDER BY DT_MES_ANO DESC;"
+        ]
+      },
+      {
+        "id": "f2f589fe5e7d41c3867b976959d58937",
+        "question": [
+          "Quais as notícias recentes sobre certificação digital e ICP-Brasil publicadas pela ANCD e Crypto ID?"
+        ],
+        "sql": [
+          "SELECT NM_FONTE, DS_TITULO, DT_PUBLICACAO, DS_URL_ORIGEM\nFROM lakehouse_iti.3_gold.dim_inteligencia_mercado\nWHERE (LOWER(DS_TITULO) LIKE '%icp-brasil%' OR LOWER(DS_TAGS) LIKE '%icp-brasil%')\n  AND NM_FONTE IN ('ANCD', 'CRYPTO ID')\nORDER BY DT_PUBLICACAO DESC\nLIMIT 5;"
+        ]
+      }
+    ]
+  },
+  "benchmarks": {
+    "questions": [
+      {
+        "id": "63854082724b43b48b5e3107ae5126da",
+        "question": [
+          "Total de certificados emitidos no mês corrente"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT SUM(VL_METRICA) AS TOTAL_EMISSOES_MES\nFROM lakehouse_iti.3_gold.fato_emissao_mensal\nWHERE DS_TIPO_SERIE = 'MENSAL CORRENTE'\n  AND DT_MES_ANO = (SELECT MAX(DT_MES_ANO) FROM lakehouse_iti.3_gold.fato_emissao_mensal WHERE DS_TIPO_SERIE = 'MENSAL CORRENTE');"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "f1f81becac5a45d9a0ccce8e7cf0a1f9",
+        "question": [
+          "Quantidade de ARs credenciadas em São Paulo"
+        ],
+        "answer": [
+          {
+            "format": "SQL",
+            "content": [
+              "SELECT COUNT(DISTINCT ID_ENTIDADE) AS TOTAL_ARS_SP\nFROM lakehouse_iti.3_gold.dim_entidade\nWHERE DS_SITUACAO = 'CREDENCIADA'\n  AND DS_TIPO = 'AR'\n  AND SG_UF = 'SP';"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

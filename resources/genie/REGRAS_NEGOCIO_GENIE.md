@@ -9,10 +9,10 @@ Este documento consolida as diretrizes operacionais, o glossário semântico e a
 | Termo / Sigla | Descrição no Negócio | Representação no Lakehouse (`DS_TIPO` / `DS_NIVEL`) |
 | :--- | :--- | :--- |
 | **ICP-Brasil** | Infraestrutura de Chaves Públicas Brasileira. | Conjunto de todas as entidades do Lakehouse. |
-| **AC Raiz** | Autoridade máxima e âncora de confiança da cadeia, operada pelo ITI. | `DS_TIPO = 'AUTORIDADE CERTIFICADORA'` e `DS_NIVEL = 0`. |
-| **AC 1º Nível** | AC intermediária subordinada diretamente à AC Raiz. | `DS_TIPO = 'AUTORIDADE CERTIFICADORA'` e `DS_NIVEL = 1`. |
-| **AC 2º Nível** | AC emissora final subordinada a uma AC de 1º Nível (vincula ARs). | `DS_TIPO = 'AUTORIDADE CERTIFICADORA'` e `DS_NIVEL = 2`. |
-| **AR (Autoridade de Registro)** | Ponto de atendimento físico ou remoto que identifica e valida os titulares. É a ponta da infraestrutura física. | `DS_TIPO = 'AUTORIDADE DE REGISTRO'` (`DS_NIVEL = 3`). |
+| **AC Raiz** | Autoridade máxima e âncora de confiança da cadeia, operada pelo ITI. | `DS_TIPO = 'AC RAIZ'` e `DS_NIVEL = 0`. |
+| **AC 1º Nível** | AC intermediária subordinada diretamente à AC Raiz. | `DS_TIPO = 'AC 1º NÍVEL'` e `DS_NIVEL = 1`. |
+| **AC 2º Nível** | AC emissora final subordinada a uma AC de 1º Nível (vincula ARs). | `DS_TIPO = 'AC 2º NÍVEL'` e `DS_NIVEL = 2`. |
+| **AR (Autoridade de Registro)** | Ponto de atendimento físico ou remoto que identifica e valida os titulares. É a ponta da infraestrutura física. | `DS_TIPO = 'AR'` (`DS_NIVEL = 3`). |
 | **ACT (Carimbo do Tempo)** | Autoridade que atesta a data e hora exata de documentos eletrônicos. | `DS_TIPO = 'AUTORIDADE DE CARIMBO DO TEMPO'`. |
 | **PSS** | Prestador de Serviço de Suporte técnico/infraestrutura. | `DS_TIPO = 'PRESTADOR DE SERVICO DE SUPORTE'`. |
 | **A1** | Certificado digital de software (validade de 1 ano, armazenado no computador). | `DS_TIPO_CERTIFICADO = 'A1'`. |
@@ -31,7 +31,12 @@ Este documento consolida as diretrizes operacionais, o glossário semântico e a
 * Se a pergunta for especificamente sobre Autoridades de Registro (ARs):
   ```sql
   WHERE DS_SITUACAO = 'CREDENCIADA'
-    AND DS_TIPO = 'AUTORIDADE DE REGISTRO'
+    AND DS_TIPO = 'AR'
+  ```
+* Se a pergunta for sobre Autoridades Certificadoras (ACs):
+  ```sql
+  WHERE DS_SITUACAO = 'CREDENCIADA'
+    AND (DS_TIPO LIKE '%AC%' OR DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL'))
   ```
 
 ### 2.2. Coluna Canônica de Quantidade e Volumetria
@@ -71,7 +76,7 @@ Ao correlacionar **capacidade de atendimento (oferta)** com o **volume de mercad
       COUNT(DISTINCT ID_ENTIDADE) AS QTD_ARS_OFERTA
   FROM lakehouse_iti.3_gold.dim_entidade
   WHERE DS_SITUACAO = 'CREDENCIADA'
-    AND DS_TIPO = 'AUTORIDADE DE REGISTRO'
+    AND DS_TIPO = 'AR'
   GROUP BY SG_UF, DS_REGIAO;
   ```
 * **Via Tabela Fato Geográfica (`fato_distribuicao_geografica`)**:
@@ -108,9 +113,10 @@ Para perguntas do tipo *"Quais ACs têm mais ARs vinculadas?"* ou *"Quantas enti
       ID_ENTIDADE,
       DS_ENTIDADE,
       SG_UF,
+      DS_TIPO,
       NR_AGREGADOS_AR
   FROM lakehouse_iti.3_gold.fato_metricas_entidades
-  WHERE DS_TIPO = 'AUTORIDADE CERTIFICADORA'
+  WHERE DS_TIPO IN ('AC 1º NÍVEL', 'AC 2º NÍVEL')
     AND DS_SITUACAO = 'CREDENCIADA'
   ORDER BY NR_AGREGADOS_AR DESC
   LIMIT 5;

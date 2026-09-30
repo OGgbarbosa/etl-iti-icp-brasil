@@ -5,7 +5,7 @@ COMMENT ON TABLE lakehouse_iti.3_gold.dim_entidade IS
 'Dimensão mestre de entidades físicas e lógicas credenciadas na ICP-Brasil. Cada linha representa uma autoridade com localização geográfica e situação operacional.';
 
 ALTER TABLE lakehouse_iti.3_gold.dim_entidade ALTER COLUMN DS_TIPO 
-COMMENT 'Descrição do tipo de entidade por extenso em caixa alta: "AUTORIDADE CERTIFICADORA", "AUTORIDADE DE REGISTRO", "AUTORIDADE DE CARIMBO DO TEMPO" ou "PRESTADOR DE SERVICO DE SUPORTE".';
+COMMENT 'Classificação do tipo de entidade: "AR" (Autoridade de Registro), "AC 1º NÍVEL", "AC 2º NÍVEL" ou "AC RAIZ".';
 
 ALTER TABLE lakehouse_iti.3_gold.dim_entidade ALTER COLUMN DS_SITUACAO 
 COMMENT 'Status operacional da autoridade. Valores possíveis: "CREDENCIADA" ou "EM CREDENCIAMENTO". Para autoridades vigentes/ativas em operação, filtrar sempre por DS_SITUACAO = "CREDENCIADA".';
