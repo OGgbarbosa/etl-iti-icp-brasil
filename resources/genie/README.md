@@ -128,3 +128,45 @@ O espaço foi testado e validado ponta a ponta via **Genie API**:
   ```
 * **Resposta do Genie**:
   > *"A ANCD publicou recentemente dois destaques sobre as emissões da ICP-Brasil: em setembro de 2026, noticiou o crescimento das emissões de certificados digitais em agosto, e em julho de 2026, destacou o aumento das emissões e da base de certificados ativos no primeiro semestre do ano. Ambos os conteúdos reforçam a tendência de crescimento nas emissões de certificados digitais pela ICP-Brasil."*
+
+---
+
+### Exemplo 3: Emissões Únicas vs. Total e Projeções para 2027
+* **Pergunta do Usuário**: *"Há uma estimativa das emissões realizadas quantas são únicas ? quais os tipos que tendem a ter crescimento ou redução para 2027 ?"*
+* **Racional Técnico no Lakehouse**:
+  - Consulta cruzada entre `lakehouse_iti.3_gold.kpi_resumo_executivo`, `lakehouse_iti.3_gold.fato_emissao_mensal` e `lakehouse_iti.3_gold.fato_segmentacao_certificados`.
+* **Resposta Consolidada do Genie**:
+  > *- **Certificados Ativos Únicos (2026):** **99,6% dos certificados emitidos estão ativos (9,52 milhões de certificados únicos válidos)** em circulação, evidenciando rápida expansão da taxa de renovação e retenção frente a 2021 (0,69%).*  
+  > *- **Sazonalidade & Projeção 2027:** Emissões com picos consistentes em janeiro, março e julho. A projeção para 2027 aponta para **9,12 milhões de emissões (-4,57%)**, indicando maturação e estabilização de mercado.*  
+  > *- **Tendências de Tecnologia:** **A1 em Software (69,24% do mercado)** em crescimento acelerado por conveniência e custo reduzido; **A3 em Hardware (30,38%)** estável em setores regulados.*  
+  > *- **Segmentação de Titularidade:** Divisão paritária sustentada por obrigações fiscais: **50,9% Pessoa Jurídica** e **48,8% Pessoa Física**.*
+
+---
+
+### Exemplo 4: Plano de Expansão e Precificação Regional para AC de 1º Nível
+* **Pergunta do Usuário**: *"Pensando em um plano de crescimento de mercado sendo uma AC de 1º nível, qual a melhor região para expansão e oferta de certificado ? Estipule o preço médio praticado na região"*
+* **Racional Técnico no Lakehouse**:
+  - Cruzamento de **oferta instalada** (`dim_entidade`, `dim_hierarquia`) com **demanda de mercado** (`fato_distribuicao_geografica`).
+* **Resposta Consolidada do Genie**:
+  > *- **Recomendação Estratégica: Região NORDESTE** (seguida pela região Norte como oportunidade secundária).*  
+  > *- **Demanda Reprimida & Baixa Concorrência:** 18,64% de participação nacional (615.778 emissões em 2026), 232 ARs ativas e **Zero ACs de 1º Nível sediadas localmente**.*  
+  > *- **Sobrecarga Operacional:** Relação de **2.654 emissões por AR** — a maior do país, provando carência de infraestrutura local de suporte.*  
+  > *- **Precificação Recomendada (Nordeste):** Certificados A1 sugeridos a **R$ 180 - R$ 250**; Certificados A3 sugeridos a **R$ 280 - R$ 380** (ajuste regional de +10% a +15% justificado por margem superior e frete de hardware).*  
+  > *- **Projeção de Captura (Ano 1):** Captura de 15% do mercado regional gerando **~92.000 certificados e R$ 23 milhões em receita bruta**.*
+
+---
+
+### Exemplo 5: Benchmarking das Top Certificadoras e Modelo Híbrido de Negócio
+* **Pergunta do Usuário**: *"Perfeito, qual o modelo de negócio seria interessante a ser introduzido ? Vendas em atacado ou varejo ? Observe top 5 certificadoras de 1º e 2º nível e procure modelos ofertados no mercado, observe sites dessas ACS e liste os melhores modelos de implantação."*
+* **Racional Técnico no Lakehouse**:
+  - Consulta hierárquica recursiva em `lakehouse_iti.3_gold.fato_metricas_entidades` e correlação setorial com `dim_inteligencia_mercado`.
+* **Resposta Consolidada do Genie**:
+  > *- **Benchmarking das Líderes:** Identificou os arquétipos vencedores do mercado privado:*  
+  >   * * **AC SOLUTI**: Líder em diversificação de atacado com **20 ACs de 2º nível** especializadas (RFB, JUS, Múltipla).*  
+  >   * * **AC SAFEWEB**: Modelo híbrido altamente eficiente com **455 ARs e 7 ACs de 2º nível**, maximizando receita multiproduto.*  
+  >   * * **AC CERTISIGN**: Marca premium com **400 ARs** e modelo híbrido consolidado.*  
+  >   * * **AC VALID**: Especialização vertical B2B com **11 ACs de 2º nível** focadas em nichos regulados.*  
+  > *- **Modelo Recomendado: Híbrido (60% Atacado / 40% Varejo):** Combina escala rápida no atacado via ACs de 2º nível parceiras (margem de 25-35%) com margens saudáveis no varejo direto via ARs próprias (margem de 45-55%).*  
+  > *- **Projeção Financeira em 3 Anos (Nordeste):** Ano 1: R$ 21M (foco atacado) ➔ Ano 2: R$ 42M (expansão varejo) ➔ Ano 3: R$ 68M (maturação com lucro líquido de R$ 25,8M).*  
+  > *- **Investimento Inicial:** Estimado em **R$ 3,5 a R$ 4,5 milhões** (credenciamento, infraestrutura técnica, 3 ARs próprias e capital de giro).*
+

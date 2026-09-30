@@ -362,6 +362,8 @@ Caso seja necessário monitorar produtos (e-CPF, e-CNPJ, NF-e, Bird ID) e tabela
 
 O projeto conta com o espaço de inteligência analítica conversacional **Genie - Inteligência Analítica ICP-Brasil**, provisionado no Databricks AI/BI e configurado de forma declarativa e versionável:
 
+### 9.1. Especificações Técnicas e Governança
+
 - **Espaço Provisionado:** `Genie - Inteligência Analítica ICP-Brasil`
 - **Catálogo & Schema:** `lakehouse_iti.3_gold`
 - **Tabelas Gold Conectadas (9):**
@@ -385,6 +387,77 @@ O projeto conta com o espaço de inteligência analítica conversacional **Genie
   python resources/genie/scripts/deploy_genie.py
   ```
   *(Consulte o guia completo em [resources/genie/README.md](resources/genie/README.md))*
+
+### 9.2. Showcase de Inteligência Executiva: Casos Reais no Databricks Genie
+
+A combinação da modelagem dimensional Star Schema, regras semânticas calibradas e UDFs de IA permitiu ao Genie responder a perguntas estratégicas complexas de nível de diretoria e consultoria executiva. Abaixo estão documentados os 3 casos reais e a rastreabilidade técnica de como o Lakehouse sustentou cada resposta:
+
+#### 🎯 Caso 1: Emissões Únicas vs. Total Acumulado e Projeções para 2027
+> **Prompt Utilizado no Genie:**  
+> *"Há uma estimativa das emissões realizadas quantas são únicas ? quais os tipos que tendem a ter crescimento ou redução para 2027 ?"*
+
+* **Resultado e Síntese Estratégica:**
+  - **99,6% dos certificados emitidos em 2026 estão ativos**, correspondendo a **9,52 milhões de certificados únicos válidos em circulação** (salto expressivo frente aos 0,69% de 2021, demonstrando alta retenção e renovação contínua no ecossistema).
+  - **Projeção para 2027:** Estimativa de **~9,12 milhões de emissões (-4,57%)**, indicando maturação e estabilização de mercado após o ciclo de expansão acelerada de 2024–2025.
+  - **Tendência por Tipo de Certificado:**
+    - **A1 em Software (69,24% do mercado):** Tendência de crescimento contínuo devido ao baixo custo, facilidade em home office e dispensa de hardware.
+    - **A3 em Hardware (30,38% do mercado):** Estabilização com leve redução, mantendo nicho em grandes corporações e setores regulados.
+  - **Titularidade:** Equilíbrio estável entre **Pessoa Jurídica (50,9% - 8,64M)** e **Pessoa Física (48,8% - 8,27M)**.
+
+* **Rastreabilidade no Lakehouse (Como o resultado foi alcançado):**
+  1. **Diferenciação Semântica Únicos vs. Fluxo:** O Genie consultou `lakehouse_iti.3_gold.kpi_resumo_executivo` e filtrou `DS_TIPO_SERIE = 'ATIVOS'` (estoque de certificados válidos em vigor) comparando com `DS_TIPO_SERIE = 'EMITIDOS'` (fluxo acumulado anual).
+  2. **Análise de Séries Temporais e Sazonalidade:** Consultou `lakehouse_iti.3_gold.fato_emissao_mensal` (clusterizada por `DT_ANO, DS_TIPO_SERIE`), mapeando os picos sazonais de janeiro, março e julho e calculando a taxa histórica de variação 2024-2026.
+  3. **Segmentação por Grão Analítico:** Acessou `lakehouse_iti.3_gold.fato_segmentacao_certificados`, calculando as frações exatas de A1 vs. A3 e PF vs. PJ.
+
+---
+
+#### 🗺️ Caso 2: Plano de Expansão Regional e Precificação para AC de 1º Nível
+> **Prompt Utilizado no Genie:**  
+> *"Pensando em um plano de crescimento de mercado sendo uma AC de 1º nível, qual a melhor região para expansão e oferta de certificado ? Estipule o preço médio praticado na região"*
+
+* **Resultado e Síntese Estratégica:**
+  - **Recomendação Definitiva:** **Região NORDESTE** como principal oportunidade de expansão, seguida pela região Norte como alternativa secundária.
+  - **Diagnóstico da Demanda Reprimida:**
+    - O Nordeste detém **18,64% de participação nacional (615.778 emissões em 2026)**.
+    - Conta com **232 ARs ativas**, mas **0 ACs de 1º Nível sediadas localmente** e apenas 5 ACs de 2º Nível.
+    - Relação de **2.654 emissões por AR** — a maior sobrecarga operacional do Brasil (contra 1.570 no Sudeste e 1.098 no Sul), indicando filas de atendimento e carência de suporte técnico regional.
+  - **Precificação Regional Recomendada:**
+    - **Certificados A1 (Software):** Sugerido **R$ 180 a R$ 250** (e-CPF: R$ 180–R$ 200; e-CNPJ: R$ 220–R$ 250).
+    - **Certificados A3 (Hardware - Token/Cartão):** Sugerido **R$ 280 a R$ 380** (inclui margem de custo de hardware e leitora).
+    - **Ajuste Regional (+10% a +15% vs Sudeste):** Justificado pela menor densidade de concorrência e custos logísticos de distribuição de tokens.
+  - **Projeção de Captura (Ano 1):** Captura de 15% do mercado regional (~92.000 certificados), gerando **R$ 23 milhões em receita bruta** e margem líquida estimada de 25-30%.
+
+* **Rastreabilidade no Lakehouse (Como o resultado foi alcançado):**
+  1. **Mapeamento de Oferta Instalada:** Consulta à `lakehouse_iti.3_gold.dim_entidade`, filtrando `DS_SITUACAO = 'CREDENCIADA'` e agrupando por `DS_REGIAO, DS_TIPO`. Isso revelou a ausência de ACs de 1º nível e a contagem de ARs locais.
+  2. **Mapeamento de Demanda:** Consulta à `lakehouse_iti.3_gold.fato_distribuicao_geografica`, agregando emissões por macrorregião e estado (Bahia, Ceará e Pernambuco como líderes regionais).
+  3. **Cruzamento Oferta vs. Demanda:** Operação matemática executada pelo Genie dividindo `SUM(VL_METRICA)` de emissões por `COUNT(DISTINCT ID_ENTIDADE)` de ARs ativas por região.
+  4. **Precificação e Contexto Regulatório:** Cruzamento com regras semânticas de custos de mídias criptográficas e contexto setorial de tributação e digitalização.
+
+---
+
+#### 🏢 Caso 3: Benchmarking das Top Certificadoras e Modelo de Negócio
+> **Prompt Utilizado no Genie:**  
+> *"Perfeito, qual o modelo de negócio seria interessante a ser introduzido ? Vendas em atacado ou varejo ? Observe top 5 certificadoras de 1º e 2º nível e procure modelos ofertados no mercado, observe sites dessas ACS e liste os melhores modelos de implantação."*
+
+* **Resultado e Síntese Estratégica:**
+  - **Benchmarking Operacional das Líderes:**
+    - **AC SOLUTI (Líder em Atacado & Diversificação):** 20 ACs de 2º nível especializadas (RFB, JUS, Múltipla). Foco em capilaridade B2B via parceiros.
+    - **AC SAFEWEB (Modelo Híbrido Eficiente):** 455 ARs com apenas 7 ACs de 2º nível. Forte equilíbrio entre rede própria e parcerias, multiproduto (RFB, CD, SSL).
+    - **AC CERTISIGN (Marca Premium):** 400 ARs e presença nacional balanceada entre atacado e varejo.
+    - **AC VALID (Especialização Vertical):** 11 ACs de 2º nível focadas em setores verticais (RFB, JUS, SPB, Brasil).
+  - **Modelo Recomendado:** **Modelo Híbrido (60% Atacado + 40% Varejo)**.
+    - **Atacado (Prioridade Fase 1):** Credenciar 3 a 5 ACs de 2º nível especializadas vendendo no atacado a R$ 120–140 (A1) e R$ 210–245 (A3) com margem de 25-35%. Garante escala rápida sem Capex excessivo em pontos físicos.
+    - **Varejo Direto (Complementar):** Implantação de 5 a 8 ARs próprias em capitais estratégicas (Salvador, Recife, Fortaleza) com margem de 45-55% para assegurar experiência e rentabilidade.
+  - **Plano de Implementação Financeira em 3 Anos:**
+    - **Ano 1:** 84.000 certificados | R$ 21 milhões receita bruta | R$ 6,7 milhões lucro líquido (foco atacado).
+    - **Ano 2:** 156.000 certificados | R$ 42 milhões receita bruta | R$ 15,1 milhões lucro líquido (expansão de ARs).
+    - **Ano 3:** 240.000 certificados | R$ 68 milhões receita bruta | R$ 25,8 milhões lucro líquido (consolidação e início de expansão para o Norte).
+    - **Investimento Inicial:** Estimado em R$ 3,5 a R$ 4,5 milhões com retorno projetado a partir do 1º ano.
+
+* **Rastreabilidade no Lakehouse (Como o resultado foi alcançado):**
+  1. **Análise de Topologia Hierárquica:** Consulta à `lakehouse_iti.3_gold.fato_metricas_entidades` e `lakehouse_iti.3_gold.dim_hierarquia` (geradas via CTE recursiva), calculando a contagem de ACs de 2º nível subordinadas e total de ARs por AC de 1º nível.
+  2. **Inteligência Setorial Externa:** O Genie ativou a função `lakehouse_iti.3_gold.fn_consultar_inteligencia_setorial` e dados da tabela `dim_inteligencia_mercado` para recuperar dados sobre parcerias com entidades de classe (OAB, CRC, CREA), videoconferência e modelos de remuneração de parceiros.
+  3. **Composição Financeira:** Simulação algorítmica de margens e volumes cruzando o grão de produto de `fato_segmentacao_certificados` com os canais de distribuição mapeados.
 
 ---
 
