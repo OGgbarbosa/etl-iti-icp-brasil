@@ -307,6 +307,57 @@ Ao executar o ponto de entrada principal (`pipeline()`), a esteira processa sequ
 | **13** | `upload_gold()` | **3_gold** | Cria/atualiza as 8 tabelas analíticas (dimensões e fatos) com `CLUSTER BY` no SQL Warehouse. |
 | **14** | `run_inteligencia_externa()` | **3_gold (Ext)** | Coleta notícias de 5 portais, executa `MERGE` em `dim_inteligencia_mercado` e registra UDF no Unity Catalog. |
 
+### 7.4. Execução Modular / Programática
+
+Como cada camada é implementada como uma função desacoplada, etapas isoladas podem ser importadas e acionadas sob demanda via scripts Python ou notebooks:
+
+```python
+from ITI_ICP_BRASIL.exportacao.upload_silver import merge_tabela_silver_numeros
+
+# Execução direcionada de uma etapa isolada
+merge_tabela_silver_numeros()
+```
+
+### 7.5. Comandos do Databricks Asset Bundle (DAB) e Orquestração do Workflow
+
+```bash
+# Validação sintática das configurações e declarações do bundle
+databricks bundle validate
+
+# Deploy em ambiente de desenvolvimento (dev)
+databricks bundle deploy
+
+# Deploy em ambiente de produção (prod)
+databricks bundle deploy --target prod
+
+# Execução do Workflow Job gerenciado no Databricks (Serverless)
+databricks bundle run ITI_ICP_BRASIL_job
+```
+
+#### 7.5.1. Arquitetura da DAG de Tarefas no Databricks Workflows
+
+O job gerenciado no Databricks (`ITI_ICP_BRASIL_job`, definido em [`resources/ITI_ICP_BRASIL_job.yml`](resources/ITI_ICP_BRASIL_job.yml)) opera como um Grafo Acíclico Dirigido (DAG) modularizado em 4 tarefas encadeadas com políticas automáticas de **retry** para máxima resiliência operacional:
+
+```mermaid
+graph LR
+    A["1. extrair_e_carregar_raw<br/>(retry: 3x | int: 10s)"] --> B["2. processar_bronze<br/>(retry: 2x | int: 5s)"]
+    B --> C["3. processar_silver<br/>(retry: 2x | int: 5s)"]
+    C --> D["4. processar_gold<br/>(retry: 2x | int: 5s)"]
+
+    click A href "src/ITI_ICP_BRASIL/exportacao/upload_raw.py" "Navegar para o script upload_raw.py"
+    click B href "src/ITI_ICP_BRASIL/exportacao/upload_bronze.py" "Navegar para o script upload_bronze.py"
+    click C href "src/ITI_ICP_BRASIL/exportacao/upload_silver.py" "Navegar para o script upload_silver.py"
+    click D href "src/ITI_ICP_BRASIL/exportacao/upload_gold.py" "Navegar para o script upload_gold.py"
+
+    classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+```
+
+> 💡 **Navegação Interativa:** O diagrama acima é interativo e navegável. Ao visualizá-lo no GitHub, clique diretamente em qualquer uma das 4 tarefas do fluxo para abrir o respectivo código-fonte da camada no repositório.
+
+- **Isolamento de Falhas:** Caso ocorra instabilidade temporária na API externa do ITI, apenas a tarefa `extrair_e_carregar_raw` é reexecutada (até 3 tentativas com intervalo de 10s).
+- **Eficiência Computacional:** Se houver erro em uma camada posterior, o Databricks refaz apenas a tarefa impactada, preservando os dados já processados com sucesso nas camadas anteriores sem custo redundante de computação.
+- **Agendamento Automático (*Cron Schedule*):** O job é programado para execução diária às **08:00 (Horário de Brasília — `America/Sao_Paulo`)**, operando de forma 100% autônoma no ambiente de Produção.
+
 ---
 
 ## 🧩 8. Extensibilidade e Desacoplamento Arquitetural
